@@ -6,6 +6,295 @@ from typing import Dict, Any, List, Optional, Tuple
 
 # Comprehensive catalog of Hyderabad localities, IT corridors, and river basins
 HYDERABAD_LOCALITIES: Dict[str, Dict[str, Any]] = {
+    # --- Major Educational Institutions & Campuses ---
+    "kmit": {
+        "display_name": "Keshav Memorial Institute of Technology (KMIT), Narayanguda",
+        "latitude": 17.3970,
+        "longitude": 78.4902,
+        "bounding_box": [17.3850, 78.4800, 17.4090, 78.5020],
+        "category": "Engineering Campus / Narayanguda Basin",
+    },
+    "keshav memorial": {
+        "display_name": "Keshav Memorial Institute of Technology (KMIT), Narayanguda",
+        "latitude": 17.3970,
+        "longitude": 78.4902,
+        "bounding_box": [17.3850, 78.4800, 17.4090, 78.5020],
+        "category": "Engineering Campus / Narayanguda Basin",
+    },
+    "narayanguda": {
+        "display_name": "Narayanguda, Hyderabad",
+        "latitude": 17.3984,
+        "longitude": 78.4912,
+        "bounding_box": [17.3880, 78.4800, 17.4100, 78.5030],
+        "category": "Central Urban Basin / Underpass Vulnerability",
+    },
+    "himayatnagar": {
+        "display_name": "Himayatnagar, Hyderabad",
+        "latitude": 17.4028,
+        "longitude": 78.4877,
+        "bounding_box": [17.3920, 78.4760, 17.4140, 78.4990],
+        "category": "Central Commercial & Residential District",
+    },
+    "hyderguda": {
+        "display_name": "Hyderguda, Hyderabad",
+        "latitude": 17.3965,
+        "longitude": 78.4850,
+        "bounding_box": [17.3870, 78.4750, 17.4070, 78.4950],
+        "category": "Central Commercial Corridor",
+    },
+    "cbit": {
+        "display_name": "Chaitanya Bharathi Institute of Technology (CBIT), Gandipet",
+        "latitude": 17.3910,
+        "longitude": 78.3240,
+        "bounding_box": [17.3750, 78.3100, 17.4050, 78.3400],
+        "category": "Engineering Campus / Gandipet Catchment",
+    },
+    "vnr": {
+        "display_name": "VNR Vignana Jyothi Institute of Engineering (VNR VJIET), Bachupally",
+        "latitude": 17.5390,
+        "longitude": 78.3840,
+        "bounding_box": [17.5250, 78.3700, 17.5550, 78.4000],
+        "category": "Engineering Campus / Bachupally Watershed",
+    },
+    "vasavi": {
+        "display_name": "Vasavi College of Engineering, Ibrahimbagh",
+        "latitude": 17.3800,
+        "longitude": 78.3820,
+        "bounding_box": [17.3680, 78.3700, 17.3920, 78.3950],
+        "category": "Engineering Campus / Musi Catchment",
+    },
+    "griet": {
+        "display_name": "Gokaraju Rangaraju Institute of Engineering (GRIET), Nizampet",
+        "latitude": 17.5180,
+        "longitude": 78.3690,
+        "bounding_box": [17.5050, 78.3550, 17.5300, 78.3850],
+        "category": "Engineering Campus / Nizampet Basin",
+    },
+    "snist": {
+        "display_name": "Sreenidhi Institute of Science and Technology (SNIST), Ghatkesar",
+        "latitude": 17.4550,
+        "longitude": 78.6750,
+        "bounding_box": [17.4400, 78.6600, 17.4700, 78.6900],
+        "category": "Engineering Campus / Eastern Catchment",
+    },
+    "jntu": {
+        "display_name": "JNTU Hyderabad (JNTUH), Kukatpally",
+        "latitude": 17.4975,
+        "longitude": 78.3920,
+        "bounding_box": [17.4850, 78.3800, 17.5100, 78.4050],
+        "category": "State Technical University / Kukatpally Basin",
+    },
+    "osmania university": {
+        "display_name": "Osmania University (OU), Hyderabad",
+        "latitude": 17.4130,
+        "longitude": 78.5280,
+        "bounding_box": [17.4000, 78.5150, 17.4300, 78.5450],
+        "category": "Historic University Campus / Elevated Ridge",
+    },
+    "iiit hyderabad": {
+        "display_name": "IIIT Hyderabad, Gachibowli",
+        "latitude": 17.4450,
+        "longitude": 78.3490,
+        "bounding_box": [17.4350, 78.3400, 17.4550, 78.3600],
+        "category": "Premier Research Campus / Gachibowli Plateau",
+    },
+    "university of hyderabad": {
+        "display_name": "University of Hyderabad (HCU), Gachibowli",
+        "latitude": 17.4560,
+        "longitude": 78.3260,
+        "bounding_box": [17.4400, 78.3100, 17.4700, 78.3450],
+        "category": "Central University / Western Lake Corridor",
+    },
+    "bits hyderabad": {
+        "display_name": "BITS Pilani Hyderabad Campus, Shamirpet",
+        "latitude": 17.5440,
+        "longitude": 78.5710,
+        "bounding_box": [17.5300, 78.5550, 17.5600, 78.5850],
+        "category": "University Campus / Northern Lakes Corridor",
+    },
+    "abids": {
+        "display_name": "Abids, Hyderabad",
+        "latitude": 17.3900,
+        "longitude": 78.4735,
+        "bounding_box": [17.3800, 78.4620, 17.4020, 78.4850],
+        "category": "Historic Commercial District / Flyover Sector",
+    },
+    "koti": {
+        "display_name": "Koti (Sultan Bazaar), Hyderabad",
+        "latitude": 17.3850,
+        "longitude": 78.4867,
+        "bounding_box": [17.3750, 78.4750, 17.3960, 78.4980],
+        "category": "Commercial Market / Musi River North Buffer",
+    },
+    "nampally": {
+        "display_name": "Nampally, Hyderabad",
+        "latitude": 17.3920,
+        "longitude": 78.4680,
+        "bounding_box": [17.3800, 78.4550, 17.4040, 78.4800],
+        "category": "Major Railway Hub / Underpass Waterlogging",
+    },
+    "basheerbagh": {
+        "display_name": "Basheerbagh, Hyderabad",
+        "latitude": 17.4045,
+        "longitude": 78.4785,
+        "bounding_box": [17.3940, 78.4680, 17.4150, 78.4890],
+        "category": "Administrative Hub / Hussain Sagar Outflow Basin",
+    },
+    "lakdikapul": {
+        "display_name": "Lakdikapul, Hyderabad",
+        "latitude": 17.4055,
+        "longitude": 78.4650,
+        "bounding_box": [17.3950, 78.4530, 17.4160, 78.4770],
+        "category": "Transit Junction / Low-Lying Flyover Underpass",
+    },
+    "masab tank": {
+        "display_name": "Masab Tank, Hyderabad",
+        "latitude": 17.4030,
+        "longitude": 78.4500,
+        "bounding_box": [17.3920, 78.4380, 17.4150, 78.4620],
+        "category": "Historic Tank Basin / Underpass Vulnerability",
+    },
+    "kphb": {
+        "display_name": "KPHB Colony (Kukatpally), Hyderabad",
+        "latitude": 17.4930,
+        "longitude": 78.3990,
+        "bounding_box": [17.4800, 78.3850, 17.5050, 78.4120],
+        "category": "High-Density Residential Hub / Drainage Surcharges",
+    },
+    "financial district": {
+        "display_name": "Financial District, Nanakramguda, Hyderabad",
+        "latitude": 17.4150,
+        "longitude": 78.3430,
+        "bounding_box": [17.4020, 78.3300, 17.4280, 78.3580],
+        "category": "Modern IT & Financial Hub",
+    },
+    "kokapet": {
+        "display_name": "Kokapet, Hyderabad",
+        "latitude": 17.3950,
+        "longitude": 78.3350,
+        "bounding_box": [17.3800, 78.3200, 17.4100, 78.3500],
+        "category": "Western Growth Corridor / Lake Outflows",
+    },
+    "sr nagar": {
+        "display_name": "SR Nagar (Sanjeeva Reddy Nagar), Hyderabad",
+        "latitude": 17.4440,
+        "longitude": 78.4430,
+        "bounding_box": [17.4330, 78.4320, 17.4550, 78.4540],
+        "category": "Dense Residential & Commercial District",
+    },
+    "malakpet": {
+        "display_name": "Malakpet, Hyderabad",
+        "latitude": 17.3750,
+        "longitude": 78.5020,
+        "bounding_box": [17.3620, 78.4900, 17.3880, 78.5150],
+        "category": "Musi River Basin / Railway Underpass Inundation Zone",
+    },
+    "falaknuma": {
+        "display_name": "Falaknuma, Hyderabad",
+        "latitude": 17.3300,
+        "longitude": 78.4670,
+        "bounding_box": [17.3150, 78.4500, 17.3450, 78.4850],
+        "category": "Southern Elevated Ridge / Old City Plateau",
+    },
+    "marredpally": {
+        "display_name": "Marredpally, Secunderabad",
+        "latitude": 17.4490,
+        "longitude": 78.5080,
+        "bounding_box": [17.4380, 78.4950, 17.4600, 78.5200],
+        "category": "Secunderabad Cantonment Residential Sector",
+    },
+    "bowenpally": {
+        "display_name": "Bowenpally, Secunderabad",
+        "latitude": 17.4720,
+        "longitude": 78.4880,
+        "bounding_box": [17.4580, 78.4750, 17.4850, 78.5020],
+        "category": "National Highway Junction & Low Drain Catchment",
+    },
+    "kompally": {
+        "display_name": "Kompally, Hyderabad",
+        "latitude": 17.5350,
+        "longitude": 78.4850,
+        "bounding_box": [17.5200, 78.4700, 17.5500, 78.5000],
+        "category": "Northern Commercial Highway Corridor",
+    },
+    "medchal": {
+        "display_name": "Medchal, Hyderabad",
+        "latitude": 17.6290,
+        "longitude": 78.4810,
+        "bounding_box": [17.6100, 78.4650, 17.6500, 78.5000],
+        "category": "Northern Outskirts / Industrial Catchment",
+    },
+    "sainikpuri": {
+        "display_name": "Sainikpuri, Hyderabad",
+        "latitude": 17.4920,
+        "longitude": 78.5480,
+        "bounding_box": [17.4800, 78.5350, 17.5050, 78.5600],
+        "category": "Northeastern Ridge & Elevated Basin",
+    },
+    "ecil": {
+        "display_name": "ECIL, Hyderabad",
+        "latitude": 17.4730,
+        "longitude": 78.5720,
+        "bounding_box": [17.4600, 78.5580, 17.4860, 78.5850],
+        "category": "Industrial Corridor & Drainage Confluence",
+    },
+    "bachupally": {
+        "display_name": "Bachupally, Hyderabad",
+        "latitude": 17.5340,
+        "longitude": 78.3690,
+        "bounding_box": [17.5200, 78.3550, 17.5500, 78.3850],
+        "category": "Northwestern Watershed & Residential Sector",
+    },
+    "habsiguda": {
+        "display_name": "Habsiguda, Hyderabad",
+        "latitude": 17.4180,
+        "longitude": 78.5450,
+        "bounding_box": [17.4050, 78.5320, 17.4300, 78.5600],
+        "category": "Eastern Urban Corridor & Stream Confluence",
+    },
+    "ramanthapur": {
+        "display_name": "Ramanthapur, Hyderabad",
+        "latitude": 17.3980,
+        "longitude": 78.5380,
+        "bounding_box": [17.3850, 78.5250, 17.4100, 78.5520],
+        "category": "Pedda Cheruvu Lake Catchment",
+    },
+    "pocharam": {
+        "display_name": "Pocharam (Infosys SEZ), Hyderabad",
+        "latitude": 17.4700,
+        "longitude": 78.6500,
+        "bounding_box": [17.4550, 78.6350, 17.4850, 78.6650],
+        "category": "Eastern IT Corridor / Water Shed",
+    },
+    "tank bund": {
+        "display_name": "Tank Bund (Hussain Sagar), Hyderabad",
+        "latitude": 17.4210,
+        "longitude": 78.4790,
+        "bounding_box": [17.4100, 78.4680, 17.4320, 78.4900],
+        "category": "Lake Embankment / Sluice Discharge Arterial",
+    },
+    "necklace road": {
+        "display_name": "Necklace Road (PVNR Marg), Hyderabad",
+        "latitude": 17.4300,
+        "longitude": 78.4710,
+        "bounding_box": [17.4180, 78.4600, 17.4420, 78.4820],
+        "category": "Lakeside Low Causeway / High Submersion Frequency",
+    },
+    "gandipet": {
+        "display_name": "Gandipet (Osman Sagar Reservoir), Hyderabad",
+        "latitude": 17.3820,
+        "longitude": 78.3000,
+        "bounding_box": [17.3600, 78.2800, 17.4100, 78.3250],
+        "category": "Major Potable Water Reservoir / Sluice Outflow",
+    },
+    "himayat sagar": {
+        "display_name": "Himayat Sagar Reservoir, Hyderabad",
+        "latitude": 17.3180,
+        "longitude": 78.3580,
+        "bounding_box": [17.2950, 78.3300, 17.3400, 78.3850],
+        "category": "Upstream Reservoir / Musi Flood Barrier",
+    },
+    # --- Standard Localities ---
     "gachibowli": {
         "display_name": "Gachibowli, Hyderabad",
         "latitude": 17.4401,
@@ -309,6 +598,79 @@ HYDERABAD_LOCALITIES: Dict[str, Dict[str, Any]] = {
     },
 }
 
+# Aliases and colloquial abbreviations for fast instant geocoding
+LOCALITY_ALIASES: Dict[str, str] = {
+    "kmit": "kmit",
+    "k.m.i.t": "kmit",
+    "kmit narayanguda": "kmit",
+    "keshav memorial": "kmit",
+    "keshav memorial institute": "kmit",
+    "keshav memorial institute of technology": "kmit",
+    "keshav memorial engineering college": "kmit",
+    "keshav": "kmit",
+    "narayanguda": "narayanguda",
+    "narayanaguda": "narayanguda",
+    "himayatnagar": "himayatnagar",
+    "himayathnagar": "himayatnagar",
+    "hyderguda": "hyderguda",
+    "cbit": "cbit",
+    "cbit gandipet": "cbit",
+    "chaitanya bharathi": "cbit",
+    "vnr": "vnr",
+    "vnr vjiet": "vnr",
+    "vjiet": "vnr",
+    "vasavi": "vasavi",
+    "griet": "griet",
+    "snist": "snist",
+    "sreenidhi": "snist",
+    "jntu": "jntu",
+    "jntuh": "jntu",
+    "ou": "osmania university",
+    "osmania": "osmania university",
+    "osmania university": "osmania university",
+    "iiit": "iiit hyderabad",
+    "iiit-h": "iiit hyderabad",
+    "iiit hyderabad": "iiit hyderabad",
+    "hcu": "university of hyderabad",
+    "uoh": "university of hyderabad",
+    "university of hyderabad": "university of hyderabad",
+    "bits": "bits hyderabad",
+    "bits hyderabad": "bits hyderabad",
+    "bits pilani": "bits hyderabad",
+    "kphb": "kphb",
+    "kukatpally housing board": "kphb",
+    "hitec": "hitec city",
+    "hitech city": "hitec city",
+    "cyber towers": "cyber towers",
+    "cybertowers": "cyber towers",
+    "financial district": "financial district",
+    "fd": "financial district",
+    "nanakramguda": "financial district",
+    "punjagutta": "panjagutta",
+    "panjagutta": "panjagutta",
+    "sr nagar": "sr nagar",
+    "sanjeeva reddy nagar": "sr nagar",
+    "masab tank": "masab tank",
+    "lakdikapul": "lakdikapul",
+    "tank bund": "tank bund",
+    "tankbund": "tank bund",
+    "necklace road": "necklace road",
+    "pvnr marg": "necklace road",
+    "secretariat": "basheerbagh",
+    "dr br ambedkar secretariat": "basheerbagh",
+    "musi": "musi river basin",
+    "musi river": "musi river basin",
+    "chaderghat": "chaderghat",
+    "moosarambagh": "moosarambagh",
+    "bhel": "lingampally",
+    "lingampally": "lingampally",
+    "durgam cheruvu": "durgam cheruvu",
+    "secret lake": "durgam cheruvu",
+    "gandipet": "gandipet",
+    "osman sagar": "gandipet",
+    "himayat sagar": "himayat sagar",
+}
+
 
 def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate great-circle distance between two points in km."""
@@ -320,17 +682,25 @@ def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) ->
     return 2.0 * r * math.asin(math.sqrt(a))
 
 
+def clean_search_term(term: str) -> str:
+    """Standardize search strings: lowercase, remove punctuation, strip excess spaces."""
+    import re
+    cleaned = re.sub(r"[^\w\s]", " ", (term or "").lower())
+    return " ".join(cleaned.split())
+
+
 class GeocodingService:
     @staticmethod
     def search_suggestions(query: str, limit: int = 8) -> List[Dict[str, Any]]:
         """
-        Return fast typeahead autocomplete suggestions for Hyderabad localities and landmarks.
+        Return fast typeahead autocomplete suggestions for Hyderabad localities,
+        campuses, IT corridors, and landmarks.
         """
-        q = (query or "").strip().lower()
+        q = clean_search_term(query)
         if not q:
             popular_keys = [
-                "gachibowli", "begumpet", "musi river basin", "ghatkesar",
-                "madhapur", "hitec city", "kukatpally", "charminar"
+                "kmit", "gachibowli", "begumpet", "musi river basin", "ghatkesar",
+                "cbit", "hitec city", "narayanguda", "kukatpally", "charminar"
             ]
             return [
                 {
@@ -344,10 +714,30 @@ class GeocodingService:
 
         results = []
         seen_names = set()
+
+        # Step 1: Check Aliases first (e.g. 'kmit' -> KMIT)
+        for alias, target_key in LOCALITY_ALIASES.items():
+            if q == alias or q in alias or alias in q:
+                entry = HYDERABAD_LOCALITIES.get(target_key)
+                if entry and entry["display_name"] not in seen_names:
+                    seen_names.add(entry["display_name"])
+                    results.append({
+                        "name": entry["display_name"],
+                        "category": entry["category"],
+                        "latitude": entry["latitude"],
+                        "longitude": entry["longitude"],
+                    })
+                    if len(results) >= limit:
+                        return results
+
+        # Step 2: Exact key or display name substring matches
         for key, entry in HYDERABAD_LOCALITIES.items():
             disp = entry["display_name"]
             cat = entry["category"]
-            if q in key or q in disp.lower() or q in cat.lower():
+            disp_clean = clean_search_term(disp)
+            key_clean = clean_search_term(key)
+
+            if q in key_clean or q in disp_clean or q in clean_search_term(cat):
                 if disp not in seen_names:
                     seen_names.add(disp)
                     results.append({
@@ -358,6 +748,27 @@ class GeocodingService:
                     })
             if len(results) >= limit:
                 break
+
+        # Step 3: Multi-word token overlap matching (e.g. 'keshav narayanguda' or 'kmit college')
+        if len(results) < limit:
+            q_tokens = set(q.split())
+            for key, entry in HYDERABAD_LOCALITIES.items():
+                disp = entry["display_name"]
+                if disp in seen_names:
+                    continue
+                combined_text = f"{key} {disp} {entry['category']}".lower()
+                matches = sum(1 for tok in q_tokens if tok in combined_text)
+                if matches > 0 and len(q_tokens) > 0 and (matches / len(q_tokens) >= 0.5):
+                    seen_names.add(disp)
+                    results.append({
+                        "name": disp,
+                        "category": entry["category"],
+                        "latitude": entry["latitude"],
+                        "longitude": entry["longitude"],
+                    })
+                if len(results) >= limit:
+                    break
+
         return results
 
     @staticmethod
@@ -375,12 +786,44 @@ class GeocodingService:
             return GeocodingService._reverse_geocode(latitude, longitude, preferred_name=location_name)
 
         # Case 2: Named location search
-        clean_name = (location_name or "Gachibowli, Hyderabad").strip()
-        lower_name = clean_name.lower()
+        raw_name = (location_name or "Gachibowli, Hyderabad").strip()
+        clean_q = clean_search_term(raw_name)
 
-        # Step A: Exact and Substring Match against local Hyderabad catalog
+        # Step A: Direct Alias Match
+        if clean_q in LOCALITY_ALIASES:
+            target_key = LOCALITY_ALIASES[clean_q]
+            entry = HYDERABAD_LOCALITIES[target_key]
+            return {
+                "location_name": entry["display_name"],
+                "latitude": entry["latitude"],
+                "longitude": entry["longitude"],
+                "bounding_box": entry["bounding_box"],
+                "category": entry["category"],
+                "source": "alias_catalog_exact",
+                "status": "resolved"
+            }
+
+        # Step B: Check if any alias is contained within the query
+        # (e.g. "kmit engineering college", "keshav memorial hyderabad", "narayanguda circle")
+        for alias, target_key in sorted(LOCALITY_ALIASES.items(), key=lambda x: len(x[0]), reverse=True):
+            if len(alias) >= 3 and alias in clean_q:
+                entry = HYDERABAD_LOCALITIES.get(target_key)
+                if entry:
+                    return {
+                        "location_name": entry["display_name"],
+                        "latitude": entry["latitude"],
+                        "longitude": entry["longitude"],
+                        "bounding_box": entry["bounding_box"],
+                        "category": entry["category"],
+                        "source": "alias_catalog_substring",
+                        "status": "resolved"
+                    }
+
+        # Step C: Exact and Substring Match against local Hyderabad catalog
         for key, entry in HYDERABAD_LOCALITIES.items():
-            if key in lower_name or lower_name in key:
+            key_clean = clean_search_term(key)
+            disp_clean = clean_search_term(entry["display_name"])
+            if key_clean == clean_q or clean_q in key_clean or key_clean in clean_q or clean_q in disp_clean:
                 return {
                     "location_name": entry["display_name"],
                     "latitude": entry["latitude"],
@@ -391,20 +834,49 @@ class GeocodingService:
                     "status": "resolved"
                 }
 
-        # Step B: OSM Nominatim Geocoding Fallback
-        osm_result = GeocodingService._query_nominatim(clean_name)
+        # Step D: Multi-word token overlap
+        q_tokens = [t for t in clean_q.split() if len(t) > 2]
+        best_score = 0
+        best_entry = None
+        for key, entry in HYDERABAD_LOCALITIES.items():
+            combined_text = f"{key} {entry['display_name']} {entry['category']}".lower()
+            score = sum(1 for tok in q_tokens if tok in combined_text)
+            if score > best_score:
+                best_score = score
+                best_entry = entry
+
+        if best_entry and best_score >= max(1, len(q_tokens) // 2):
+            return {
+                "location_name": best_entry["display_name"],
+                "latitude": best_entry["latitude"],
+                "longitude": best_entry["longitude"],
+                "bounding_box": best_entry["bounding_box"],
+                "category": best_entry["category"],
+                "source": "local_token_match",
+                "status": "resolved"
+            }
+
+        # Step E: OSM Nominatim Geocoding Fallback with Hyderabad Bounding Box
+        osm_result = GeocodingService._query_nominatim(raw_name)
         if osm_result:
             return osm_result
 
-        # Step C: Default to Gachibowli, Hyderabad if completely unresolved
-        default_entry = HYDERABAD_LOCALITIES["gachibowli"]
+        # Step F: Safe Central Hyderabad Reference (Tank Bund / Secretariat)
+        # Never silently return Gachibowli coordinates for an uncataloged central area!
+        central_entry = {
+            "display_name": f"{raw_name}, Central Hyderabad",
+            "latitude": 17.4065,
+            "longitude": 78.4725,
+            "bounding_box": [17.3900, 78.4550, 17.4250, 78.4900],
+            "category": "Central Urban Sector (Approximate Geocoding)",
+        }
         return {
-            "location_name": f"{clean_name} (Mapped to Hyderabad)",
-            "latitude": default_entry["latitude"],
-            "longitude": default_entry["longitude"],
-            "bounding_box": default_entry["bounding_box"],
-            "category": default_entry["category"],
-            "source": "default_fallback",
+            "location_name": central_entry["display_name"],
+            "latitude": central_entry["latitude"],
+            "longitude": central_entry["longitude"],
+            "bounding_box": central_entry["bounding_box"],
+            "category": central_entry["category"],
+            "source": "central_hyderabad_fallback",
             "status": "resolved"
         }
 
@@ -430,7 +902,7 @@ class GeocodingService:
             round(lon + delta, 4),
         ]
 
-        if min_dist <= 3.5 and closest_entry:
+        if min_dist <= 2.5 and closest_entry:
             disp_name = preferred_name or closest_entry["display_name"]
             category = closest_entry["category"]
         else:
@@ -449,36 +921,51 @@ class GeocodingService:
 
     @staticmethod
     def _query_nominatim(query: str) -> Optional[Dict[str, Any]]:
-        """Query OSM Nominatim API with safe timeout and error handling."""
+        """Query OSM Nominatim API with safe timeout, bounded viewbox, and error handling."""
         try:
-            full_query = query if "hyderabad" in query.lower() else f"{query}, Hyderabad, India"
+            # Clean up query
+            q_clean = query.strip()
+            if "hyderabad" not in q_clean.lower():
+                full_query = f"{q_clean}, Hyderabad, Telangana, India"
+            else:
+                full_query = f"{q_clean}, India"
+
             encoded_query = urllib.parse.quote(full_query)
-            url = f"https://nominatim.openstreetmap.org/search?q={encoded_query}&format=json&limit=1"
+            # Bound search to Hyderabad metropolitan area (viewbox: west,south,east,north)
+            url = (
+                f"https://nominatim.openstreetmap.org/search?"
+                f"q={encoded_query}&format=json&limit=1"
+                f"&viewbox=78.10,17.10,78.80,17.70&bounded=0"
+            )
             req = urllib.request.Request(
                 url,
-                headers={"User-Agent": "HackWaveFloodEngine/1.0 (flood-prediction-agent)"}
+                headers={
+                    "User-Agent": "FloodCast-GeospatialEngine/2.0 (contact: support@floodcast.internal)"
+                }
             )
-            with urllib.request.urlopen(req, timeout=4.0) as resp:
+            with urllib.request.urlopen(req, timeout=3.5) as resp:
                 data = json.loads(resp.read().decode())
                 if data and len(data) > 0:
                     first = data[0]
                     lat = float(first["lat"])
                     lon = float(first["lon"])
-                    bb = first.get("boundingbox", [lat - 0.02, lat + 0.02, lon - 0.02, lon + 0.02])
-                    # Nominatim returns [south, north, west, east]
-                    south, north, west, east = float(bb[0]), float(bb[1]), float(bb[2]), float(bb[3])
-                    return {
-                        "location_name": first.get("display_name", query).split(",")[0] + ", Hyderabad",
-                        "latitude": lat,
-                        "longitude": lon,
-                        "bounding_box": [south, west, north, east],
-                        "category": first.get("type", "Urban Locality"),
-                        "source": "osm_nominatim",
-                        "status": "resolved"
-                    }
+                    # Check that coordinates are genuinely within Hyderabad metro bounds
+                    if 17.15 <= lat <= 17.65 and 78.15 <= lon <= 78.75:
+                        bb = first.get("boundingbox", [lat - 0.015, lat + 0.015, lon - 0.015, lon + 0.015])
+                        south, north, west, east = float(bb[0]), float(bb[1]), float(bb[2]), float(bb[3])
+                        return {
+                            "location_name": first.get("display_name", query).split(",")[0] + ", Hyderabad",
+                            "latitude": lat,
+                            "longitude": lon,
+                            "bounding_box": [south, west, north, east],
+                            "category": first.get("type", "Urban Landmark"),
+                            "source": "osm_nominatim",
+                            "status": "resolved"
+                        }
         except Exception as exc:
             print(f"[GeocodingService] Nominatim lookup exception for '{query}': {exc}")
         return None
 
 
 geocoding_service = GeocodingService()
+

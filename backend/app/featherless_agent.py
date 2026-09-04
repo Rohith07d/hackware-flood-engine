@@ -531,10 +531,7 @@ class FeatherlessAgent:
         if not clean_q:
             return {"location_name": "Gachibowli, Hyderabad", "rainfall_mm": 65.0}
 
-        # First check fast local catalog match
-        resolved = geocoding_service.resolve_location(clean_q)
         default_rainfall = 65.0
-
         # Extract number if query specifies mm or rainfall
         import re
         rain_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:mm|milli)", clean_q.lower())
@@ -544,14 +541,28 @@ class FeatherlessAgent:
             except Exception:
                 pass
 
-        if self.is_configured and self.client and len(clean_q) > 15:
+        # First check fast local catalog match
+        resolved = geocoding_service.resolve_location(clean_q)
+        if resolved.get("source") != "central_hyderabad_fallback":
+            return {
+                "location_name": resolved["location_name"],
+                "latitude": resolved["latitude"],
+                "longitude": resolved["longitude"],
+                "rainfall_mm": default_rainfall,
+                "ai_interpreted": False
+            }
+
+        # If location was not in catalog, use Featherless AI to understand the natural language query
+        if self.is_configured and self.client:
             try:
                 prompt = (
                     "You are a Hyderabad Geospatial Entity Recognizer. "
                     "Given the user's flood query, identify: "
-                    "1. 'target_locality': the best matching Hyderabad locality/area name. "
-                    "2. 'rainfall_mm': precipitation amount in mm if mentioned or implied (default 65.0). "
-                    "Respond with strict JSON with keys 'target_locality' and 'rainfall_mm'."
+                    "1. 'target_locality': the best matching Hyderabad locality or campus name. "
+                    "2. 'approx_latitude': estimated latitude (between 17.2 and 17.6) if known. "
+                    "3. 'approx_longitude': estimated longitude (between 78.2 and 78.7) if known. "
+                    "4. 'rainfall_mm': precipitation amount in mm if mentioned (default 65.0). "
+                    "Respond with strict JSON with keys: 'target_locality', 'approx_latitude', 'approx_longitude', 'rainfall_mm'."
                 )
                 resp = self.client.chat.completions.create(
                     model=settings.featherless_model,
@@ -567,13 +578,26 @@ class FeatherlessAgent:
                 if match:
                     parsed = json.loads(match.group(0))
                     target = parsed.get("target_locality", "")
+                    lat = parsed.get("approx_latitude")
+                    lon = parsed.get("approx_longitude")
+                    rain = float(parsed.get("rainfall_mm", default_rainfall))
+
                     if target and len(target) > 2:
-                        res = geocoding_service.resolve_location(target)
-                        rain = float(parsed.get("rainfall_mm", default_rainfall))
+                        sub_res = geocoding_service.resolve_location(target)
+                        if sub_res.get("source") != "central_hyderabad_fallback":
+                            return {
+                                "location_name": sub_res["location_name"],
+                                "latitude": sub_res["latitude"],
+                                "longitude": sub_res["longitude"],
+                                "rainfall_mm": rain,
+                                "ai_interpreted": True
+                            }
+
+                    if lat and lon and 17.15 <= float(lat) <= 17.65 and 78.15 <= float(lon) <= 78.75:
                         return {
-                            "location_name": res["location_name"],
-                            "latitude": res["latitude"],
-                            "longitude": res["longitude"],
+                            "location_name": f"{target or clean_q}, Hyderabad",
+                            "latitude": round(float(lat), 6),
+                            "longitude": round(float(lon), 6),
                             "rainfall_mm": rain,
                             "ai_interpreted": True
                         }

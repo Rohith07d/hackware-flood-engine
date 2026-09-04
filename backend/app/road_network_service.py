@@ -366,6 +366,110 @@ LOCALITY_ROADS: Dict[str, List[Dict[str, Any]]] = {
             "length_km": 1.2,
         },
     ],
+    "kmit": [
+        {
+            "name": "Narayanguda Flyover Underpass & X Roads",
+            "type": "Grade Separator Underpass",
+            "coords": [
+                [17.3940, 78.4900],
+                [17.3970, 78.4905],
+                [17.4000, 78.4915],
+                [17.4030, 78.4925]
+            ],
+            "base_depression_factor": 2.85,
+            "elevation_offset_m": -3.4,
+            "length_km": 1.1,
+        },
+        {
+            "name": "KMIT Campus Access Road (Narayanguda Lane)",
+            "type": "Institutional Access Lane",
+            "coords": [
+                [17.3955, 78.4890],
+                [17.3970, 78.4902],
+                [17.3985, 78.4918]
+            ],
+            "base_depression_factor": 1.25,
+            "elevation_offset_m": -0.8,
+            "length_km": 0.5,
+        },
+        {
+            "name": "Himayatnagar Main Arterial Corridor",
+            "type": "Primary Commercial Arterial",
+            "coords": [
+                [17.3980, 78.4840],
+                [17.4010, 78.4870],
+                [17.4040, 78.4900],
+                [17.4070, 78.4930]
+            ],
+            "base_depression_factor": 1.40,
+            "elevation_offset_m": -1.2,
+            "length_km": 1.5,
+        },
+        {
+            "name": "Barkatpura Chaman - Narayanguda Link",
+            "type": "Urban Connector",
+            "coords": [
+                [17.3940, 78.4950],
+                [17.3965, 78.4925],
+                [17.3990, 78.4900]
+            ],
+            "base_depression_factor": 1.70,
+            "elevation_offset_m": -2.0,
+            "length_km": 0.8,
+        },
+        {
+            "name": "Hyderguda - Old MLA Quarters Road",
+            "type": "Secondary Arterial",
+            "coords": [
+                [17.3960, 78.4830],
+                [17.3975, 78.4870],
+                [17.3990, 78.4910]
+            ],
+            "base_depression_factor": 0.95,
+            "elevation_offset_m": 0.6,
+            "length_km": 1.0,
+        },
+    ],
+    "narayanguda": [
+        {
+            "name": "Narayanguda Flyover Underpass & X Roads",
+            "type": "Grade Separator Underpass",
+            "coords": [
+                [17.3940, 78.4900],
+                [17.3970, 78.4905],
+                [17.4000, 78.4915],
+                [17.4030, 78.4925]
+            ],
+            "base_depression_factor": 2.85,
+            "elevation_offset_m": -3.4,
+            "length_km": 1.1,
+        },
+        {
+            "name": "Barkatpura Chaman - Narayanguda Link",
+            "type": "Urban Connector",
+            "coords": [
+                [17.3940, 78.4950],
+                [17.3965, 78.4925],
+                [17.3990, 78.4900]
+            ],
+            "base_depression_factor": 1.70,
+            "elevation_offset_m": -2.0,
+            "length_km": 0.8,
+        },
+        {
+            "name": "Himayatnagar Main Arterial Corridor",
+            "type": "Primary Commercial Arterial",
+            "coords": [
+                [17.3980, 78.4840],
+                [17.4010, 78.4870],
+                [17.4040, 78.4900],
+                [17.4070, 78.4930]
+            ],
+            "base_depression_factor": 1.40,
+            "elevation_offset_m": -1.2,
+            "length_km": 1.5,
+        },
+    ],
 }
 
 

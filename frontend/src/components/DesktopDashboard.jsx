@@ -157,14 +157,30 @@ export default function DesktopDashboard() {
   // Handle Search Submission (supports natural language queries via Featherless AI)
   const handleSearch = async (e) => {
     e?.preventDefault();
-    if (!searchInput.trim()) return;
+    const query = searchInput.trim();
+    if (!query) return;
     setShowSuggestions(false);
     setIsLoading(true);
 
     try {
+      // Check if active suggestions list has an immediate match
+      const matched = suggestions.find(
+        (s) => s.name.toLowerCase().includes(query.toLowerCase())
+      ) || (suggestions.length > 0 && query.length <= 5 ? suggestions[0] : null);
+
+      if (matched && matched.latitude && matched.longitude) {
+        await runAreaAnalysis({
+          location_name: matched.name,
+          latitude: matched.latitude,
+          longitude: matched.longitude,
+          rainfall_mm: rainfall,
+        });
+        return;
+      }
+
       // If query is natural language sentence, use Featherless searchAreaWithAI
-      if (searchInput.trim().split(" ").length > 3 || searchInput.toLowerCase().includes("rain")) {
-        const aiRes = await searchAreaWithAI(searchInput.trim(), rainfall);
+      if (query.split(" ").length > 3 || query.toLowerCase().includes("rain")) {
+        const aiRes = await searchAreaWithAI(query, rainfall);
         if (aiRes && aiRes.status === "success") {
           setSelectedArea(aiRes);
           setSelectedRoad(null);
@@ -179,7 +195,7 @@ export default function DesktopDashboard() {
 
       // Default area lookup
       await runAreaAnalysis({
-        location_name: searchInput.trim(),
+        location_name: query,
         rainfall_mm: rainfall,
       });
     } catch (err) {
@@ -287,7 +303,12 @@ export default function DesktopDashboard() {
                   onClick={() => {
                     setSearchInput(item.name);
                     setShowSuggestions(false);
-                    runAreaAnalysis({ location_name: item.name, rainfall_mm: rainfall });
+                    runAreaAnalysis({
+                      location_name: item.name,
+                      latitude: item.latitude,
+                      longitude: item.longitude,
+                      rainfall_mm: rainfall,
+                    });
                   }}
                   className="flex w-full items-start justify-between rounded-lg px-2.5 py-2 text-left transition hover:bg-white/10 active:bg-cyan-500/20"
                 >
