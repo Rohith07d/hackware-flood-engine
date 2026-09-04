@@ -144,18 +144,39 @@ export default function DesktopDashboard({
                 </div>
               </div>
 
-              <div>
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Model Features ({Object.keys(analysisResult.features_used).length})
+              <div className="rounded-xl border border-white/[0.06] bg-ink-700/40 p-4">
+                <p className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Actionable Recommendations
                 </p>
-                <div className="space-y-1 rounded-xl border border-white/[0.06] bg-ink-700/40 p-3">
-                  {Object.entries(analysisResult.features_used).map(([k, v]) => (
-                    <div key={k} className="flex justify-between text-[12px]">
-                      <span className="text-slate-400">{k}</span>
-                      <span className="font-mono font-medium text-slate-200">{typeof v === 'number' ? v.toFixed(2) : v}</span>
-                    </div>
-                  ))}
-                </div>
+                <ul className="space-y-2 text-[13px] text-slate-300">
+                  {effectiveTier === 'CRITICAL' && (
+                    <>
+                      <li className="flex gap-2"><span className="text-rose-400 font-bold">•</span> Evacuate immediately if advised by local authorities.</li>
+                      <li className="flex gap-2"><span className="text-rose-400 font-bold">•</span> Move essential items to the highest possible floor.</li>
+                      <li className="flex gap-2"><span className="text-rose-400 font-bold">•</span> Avoid all travel; roads are extremely dangerous.</li>
+                    </>
+                  )}
+                  {effectiveTier === 'HIGH' && (
+                    <>
+                      <li className="flex gap-2"><span className="text-amber-400 font-bold">•</span> Prepare an emergency kit and be ready to evacuate.</li>
+                      <li className="flex gap-2"><span className="text-amber-400 font-bold">•</span> Move valuables to higher ground.</li>
+                      <li className="flex gap-2"><span className="text-amber-400 font-bold">•</span> Avoid driving through flooded roads or bridges.</li>
+                    </>
+                  )}
+                  {effectiveTier === 'MODERATE' && (
+                    <>
+                      <li className="flex gap-2"><span className="text-yellow-400 font-bold">•</span> Stay informed on local weather updates.</li>
+                      <li className="flex gap-2"><span className="text-yellow-400 font-bold">•</span> Clear gutters and drains around your property.</li>
+                      <li className="flex gap-2"><span className="text-yellow-400 font-bold">•</span> Avoid parking in low-lying areas.</li>
+                    </>
+                  )}
+                  {effectiveTier === 'LOW' && (
+                    <>
+                      <li className="flex gap-2"><span className="text-emerald-400 font-bold">•</span> Normal activities can proceed safely.</li>
+                      <li className="flex gap-2"><span className="text-emerald-400 font-bold">•</span> Ensure rainwater harvesting systems are clear.</li>
+                    </>
+                  )}
+                </ul>
               </div>
 
               <div className="rounded-xl border border-white/[0.06] bg-ink-700/40 p-3.5 text-[11px] text-slate-400 space-y-1.5">

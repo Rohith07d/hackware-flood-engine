@@ -18,6 +18,8 @@ const SUSCEPTIBILITY_BOUNDS = [
   [18.00013888888889, 79.00069444444445],
 ];
 
+
+
 export default function MapCanvasInner({
   variant = "light", // "light" | "dark"
   showMarkers = false,
@@ -88,6 +90,8 @@ export default function MapCanvasInner({
       fillColor: "#a3172e",
       fillOpacity: dark ? 0.38 : 0.42,
     }).addTo(map);
+
+
 
     // Evacuation route
     if (showEvacuation) {
@@ -197,6 +201,8 @@ export default function MapCanvasInner({
       fillColor: outerColor,
       fillOpacity: dark ? 0.15 + 0.3 * intensity : 0.2 + 0.3 * intensity,
     });
+    
+
     
   }, [horizon, dark, center ? center.join(',') : '']);
 
