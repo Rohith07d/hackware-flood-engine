@@ -110,6 +110,8 @@ class FeatherlessAgent:
             actions.insert(0, "Initiate phased precautionary evacuation for residents within 500m of drainage channels.")
             actions.insert(1, "Pre-position emergency rescue teams and medical transport near designated shelter hubs.")
 
+        actions_formatted = "\n".join([f"- {act}" for act in actions])
+
         markdown_advisory = f"""### ⚠️ FLOOD EMERGENCY ADVISORY: {location.upper()}
 
 **Threat Level**: `{severity.upper()}` | **Flood Inundation Probability**: `{pct}%` | **Rainfall**: `{rainfall_mm} mm`
@@ -123,7 +125,7 @@ The following key facilities within the monitoring radius are vulnerable to wate
 - **Vulnerability Impact**: Heightened risk of access disruption, power grid isolation, and service interruption.
 
 #### 3. Immediate Recommended Protocols
-{"".join([f"- {act}\n" for act in actions])}
+{actions_formatted}
 
 *Generated automatically by HackWave Hybrid AI Flood Engine.*
 """
