@@ -59,6 +59,18 @@ app.add_middleware(
 )
 
 
+@app.get("/", tags=["Root"])
+def root():
+    """Root endpoint welcoming visitors and providing documentation links."""
+    return {
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "status": "online",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 def health_check() -> HealthResponse:
     """Service health, model readiness, database, and DEM cache status check."""
