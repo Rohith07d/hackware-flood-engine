@@ -1,7 +1,9 @@
 export const APP_NAME = "HackWave Flood Engine";
 
 export const MAP_DEFAULTS = {
-  latitude: 0,
-  longitude: 0,
-  zoom: 2,
+  latitude: 17.4948,
+  longitude: 78.681,
+  zoom: 14,
 };
+
+export const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
