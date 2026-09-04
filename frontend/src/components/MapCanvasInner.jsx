@@ -19,13 +19,24 @@ const SUSCEPTIBILITY_BOUNDS = [
   [18.00013888888889, 79.00069444444445],
 ];
 
+const DEFAULT_EVACUATION_ROUTE = [
+  [17.4447, 78.4664],
+  [17.4401, 78.4500],
+  [17.4350, 78.4400],
+  [17.4319, 78.4074],
+];
+
 export default function MapCanvasInner({
   variant = "dark",
   selectedArea = null,
+  center = null,
+  zoom = 13.5,
   onMapClick = null,
   showReferenceRaster = false,
+  showEvacuation = false,
   rainfall = 65,
   isLoading = false,
+  interactive = true,
   className = "",
 }) {
   const containerRef = useRef(null);
@@ -33,16 +44,26 @@ export default function MapCanvasInner({
   const areaMarkerRef = useRef(null);
   const areaHaloRef = useRef(null);
   const areaBoundsRef = useRef(null);
+  const evacuationLayerRef = useRef(null);
   const rasterLayerRef = useRef(null);
   const clickCallbackRef = useRef(onMapClick);
 
   clickCallbackRef.current = onMapClick;
 
-  const lat = selectedArea?.coordinates?.latitude ?? selectedArea?.latitude ?? 17.4401;
-  const lon = selectedArea?.coordinates?.longitude ?? selectedArea?.longitude ?? 78.3489;
+  // Robust coordinate resolution preventing any NaN propagation
+  const rawLat = selectedArea?.coordinates?.latitude ?? selectedArea?.latitude ?? center?.[0];
+  const rawLon = selectedArea?.coordinates?.longitude ?? selectedArea?.longitude ?? center?.[1];
+
+  const parsedLat = Number(rawLat);
+  const parsedLon = Number(rawLon);
+
+  const lat = Number.isFinite(parsedLat) ? parsedLat : 17.4401;
+  const lon = Number.isFinite(parsedLon) ? parsedLon : 78.3489;
+
   const areaName = selectedArea?.area_name || "Selected Area";
   const riskTier = selectedArea?.risk_tier || "Moderate";
-  const score = selectedArea?.susceptibility_score ?? 0.0;
+  const rawScore = Number(selectedArea?.susceptibility_score);
+  const score = Number.isFinite(rawScore) ? rawScore : 0.0;
   const bbox = selectedArea?.bounding_box;
 
   const primaryColor = RISK_COLORS[riskTier] || "#3b82f6";
@@ -59,17 +80,21 @@ export default function MapCanvasInner({
       containerRef.current._leaflet_id = null;
     }
 
+    const initialLat = Number.isFinite(lat) ? lat : 17.4401;
+    const initialLon = Number.isFinite(lon) ? lon : 78.3489;
+    const initialZoom = Number.isFinite(Number(zoom)) ? Number(zoom) : 13.5;
+
     const map = L.map(containerRef.current, {
-      center: [lat, lon],
-      zoom: 13.5,
+      center: [initialLat, initialLon],
+      zoom: initialZoom,
       zoomControl: false,
-      scrollWheelZoom: true,
-      dragging: true,
-      doubleClickZoom: true,
+      scrollWheelZoom: interactive,
+      dragging: interactive,
+      doubleClickZoom: interactive,
     });
     mapInstanceRef.current = map;
 
-    // Dark/modern CartoDB or OpenStreetMap tiles
+    // CartoDB Voyager tiles (clean, highly readable across dark/light themes)
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
       attribution: '&copy; <a href="https://carto.com/">CARTO</a> | &copy; OpenStreetMap',
       maxZoom: 19,
@@ -77,11 +102,15 @@ export default function MapCanvasInner({
 
     // Map click handler for interactive area selection
     map.on("click", (e) => {
-      if (clickCallbackRef.current) {
-        clickCallbackRef.current({
-          latitude: Number(e.latlng.lat.toFixed(6)),
-          longitude: Number(e.latlng.lng.toFixed(6)),
-        });
+      if (clickCallbackRef.current && e?.latlng) {
+        const clickLat = Number(e.latlng.lat);
+        const clickLng = Number(e.latlng.lng);
+        if (Number.isFinite(clickLat) && Number.isFinite(clickLng)) {
+          clickCallbackRef.current({
+            latitude: Number(clickLat.toFixed(6)),
+            longitude: Number(clickLng.toFixed(6)),
+          });
+        }
       }
     });
 
@@ -102,6 +131,29 @@ export default function MapCanvasInner({
       }
     };
   }, []);
+
+  // Handle Evacuation Route
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (showEvacuation) {
+      if (!evacuationLayerRef.current) {
+        evacuationLayerRef.current = L.polyline(DEFAULT_EVACUATION_ROUTE, {
+          color: "#0891b2",
+          weight: 4,
+          dashArray: "2 8",
+          lineCap: "round",
+          zIndex: 8,
+        }).addTo(map);
+      }
+    } else {
+      if (evacuationLayerRef.current) {
+        evacuationLayerRef.current.remove();
+        evacuationLayerRef.current = null;
+      }
+    }
+  }, [showEvacuation]);
 
   // Handle Reference Raster Overlay toggle
   useEffect(() => {
@@ -128,19 +180,32 @@ export default function MapCanvasInner({
     if (!map) return;
 
     // Clean up previous area highlights
-    if (areaMarkerRef.current) areaMarkerRef.current.remove();
-    if (areaHaloRef.current) areaHaloRef.current.remove();
-    if (areaBoundsRef.current) areaBoundsRef.current.remove();
+    if (areaMarkerRef.current) {
+      areaMarkerRef.current.remove();
+      areaMarkerRef.current = null;
+    }
+    if (areaHaloRef.current) {
+      areaHaloRef.current.remove();
+      areaHaloRef.current = null;
+    }
+    if (areaBoundsRef.current) {
+      areaBoundsRef.current.remove();
+      areaBoundsRef.current = null;
+    }
+
+    // Safety guard: only execute area flyTo and highlight if selectedArea is provided and valid
+    if (!selectedArea || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return;
+    }
 
     // Fly camera smoothly to selected area
     map.flyTo([lat, lon], 14, { duration: 1.0 });
 
     // 1. Highlight bounding box if available
-    if (bbox && bbox.length === 4) {
-      // bbox is [south, west, north, east]
+    if (bbox && Array.isArray(bbox) && bbox.length === 4 && bbox.every((val) => Number.isFinite(Number(val)))) {
       const boundsLatLng = [
-        [bbox[0], bbox[1]],
-        [bbox[2], bbox[3]],
+        [Number(bbox[0]), Number(bbox[1])],
+        [Number(bbox[2]), Number(bbox[3])],
       ];
       areaBoundsRef.current = L.rectangle(boundsLatLng, {
         color: primaryColor,
@@ -204,7 +269,7 @@ export default function MapCanvasInner({
         `<b>${areaName}</b><br/>LightGBM Susceptibility: ${(score * 100).toFixed(1)}% (${riskTier})`,
         { permanent: false, direction: "top", offset: [0, -12] }
       );
-  }, [lat, lon, areaName, riskTier, score, primaryColor, bbox]);
+  }, [lat, lon, areaName, riskTier, score, primaryColor, bbox, selectedArea]);
 
   return (
     <div className={`relative h-full w-full overflow-hidden ${className}`}>
@@ -235,18 +300,20 @@ export default function MapCanvasInner({
       )}
 
       {/* Active Selected Area Floating Chip */}
-      <div className="pointer-events-none absolute bottom-5 left-4 z-[400] flex items-center gap-2.5 rounded-xl border border-white/15 bg-slate-900/90 px-3.5 py-2 shadow-xl backdrop-blur-md">
-        <span
-          className="h-2.5 w-2.5 rounded-full"
-          style={{ backgroundColor: primaryColor }}
-        />
-        <div className="flex flex-col">
-          <span className="text-[11px] font-semibold text-white">{areaName}</span>
-          <span className="text-[10px] text-slate-400">
-            {lat.toFixed(4)}°N, {lon.toFixed(4)}°E • {(score * 100).toFixed(1)}% ({riskTier})
-          </span>
+      {selectedArea && Number.isFinite(lat) && Number.isFinite(lon) && (
+        <div className="pointer-events-none absolute bottom-5 left-4 z-[400] flex items-center gap-2.5 rounded-xl border border-white/15 bg-slate-900/90 px-3.5 py-2 shadow-xl backdrop-blur-md">
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: primaryColor }}
+          />
+          <div className="flex flex-col">
+            <span className="text-[11px] font-semibold text-white">{areaName}</span>
+            <span className="text-[10px] text-slate-400">
+              {lat.toFixed(4)}°N, {lon.toFixed(4)}°E • {(score * 100).toFixed(1)}% ({riskTier})
+            </span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
