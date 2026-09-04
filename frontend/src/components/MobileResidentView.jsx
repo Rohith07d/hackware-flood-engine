@@ -13,22 +13,22 @@ export default function MobileResidentView({
   isAnalyzing,
   analysisResult,
   horizon, setHorizon,
-  handleSearch
+  handleSearch,
+  effectiveScore,
+  effectiveTier
 }) {
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [showEvacuation, setShowEvacuation] = useState(false);
 
   const getRiskDetails = () => {
     if (!analysisResult) return null;
-    const isCritical = analysisResult.risk_level === 'CRITICAL' || horizon > 80;
-    const isHigh = analysisResult.risk_level === 'HIGH' || horizon > 60;
     
-    const riskLabel = isCritical ? 'CRITICAL' : isHigh ? 'HIGH' : analysisResult.risk_level;
-    const color = isCritical ? riskLevelMeta.severe.color : isHigh ? riskLevelMeta.high.color : riskLabel === 'MODERATE' ? riskLevelMeta.moderate.color : riskLevelMeta.low.color;
+    const color = effectiveTier === 'CRITICAL' ? riskLevelMeta.severe.color : 
+                  effectiveTier === 'HIGH' ? riskLevelMeta.high.color : 
+                  effectiveTier === 'MODERATE' ? riskLevelMeta.moderate.color : 
+                  riskLevelMeta.low.color;
     
-    const displaySusceptibility = Math.min(100, (analysisResult.susceptibility_score * 100) + (horizon / 100) * 15).toFixed(1);
-    
-    return { label: riskLabel, color, susceptibility: displaySusceptibility };
+    return { label: effectiveTier, color, susceptibility: effectiveScore };
   };
 
   const riskDetails = getRiskDetails();

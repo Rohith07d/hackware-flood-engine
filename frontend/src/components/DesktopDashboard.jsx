@@ -13,7 +13,9 @@ export default function DesktopDashboard({
   analysisResult,
   horizon, setHorizon,
   errorMsg,
-  handleSearch
+  handleSearch,
+  effectiveScore,
+  effectiveTier
 }) {
   const [backendOnline, setBackendOnline] = useState(false);
   const [modelInfo, setModelInfo] = useState(null);
@@ -114,18 +116,18 @@ export default function DesktopDashboard({
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Susceptibility</p>
                   <div className="flex items-end gap-1">
                     <span className="text-3xl font-bold text-white">
-                      {Math.min(100, (analysisResult.susceptibility_score * 100) + (horizon / 100) * 15).toFixed(1)}%
+                      {effectiveScore}%
                     </span>
                   </div>
                 </div>
                 <div className="flex-1 rounded-xl border border-white/[0.06] bg-ink-700/60 p-4">
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Risk Tier</p>
                   <div className={`text-xl font-bold ${
-                    analysisResult.risk_level === 'CRITICAL' || horizon > 80 ? 'text-rose-500' :
-                    analysisResult.risk_level === 'HIGH' || horizon > 60 ? 'text-amber-500' :
-                    analysisResult.risk_level === 'MODERATE' ? 'text-yellow-400' : 'text-emerald-400'
+                    effectiveTier === 'CRITICAL' ? 'text-rose-500' :
+                    effectiveTier === 'HIGH' ? 'text-amber-500' :
+                    effectiveTier === 'MODERATE' ? 'text-yellow-400' : 'text-emerald-400'
                   }`}>
-                    {horizon > 80 ? 'CRITICAL' : horizon > 60 ? 'HIGH' : analysisResult.risk_level}
+                    {effectiveTier}
                   </div>
                 </div>
               </div>
