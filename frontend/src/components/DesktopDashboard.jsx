@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import { Search, MapPin, Gauge, Activity, FileText, CheckCircle2 } from "lucide-react";
 import Logo from "./Logo.jsx";
 import MapCanvas from "./MapCanvas.jsx";
+import RainfallSlider from "./RainfallSlider.jsx";
 import { analyzeArea, fetchHealth, fetchModelStatus } from "../lib/api.js";
 
 export default function DesktopDashboard() {
   const [backendOnline, setBackendOnline] = useState(false);
   const [modelInfo, setModelInfo] = useState(null);
+  const [horizon, setHorizon] = useState(62);
   
   const [searchQuery, setSearchQuery] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -132,17 +134,19 @@ export default function DesktopDashboard() {
                 <div className="flex-1 rounded-xl border border-white/[0.06] bg-ink-700/60 p-4">
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Susceptibility</p>
                   <div className="flex items-end gap-1">
-                    <span className="text-3xl font-bold text-white">{(analysisResult.susceptibility_score * 100).toFixed(1)}%</span>
+                    <span className="text-3xl font-bold text-white">
+                      {Math.min(100, (analysisResult.susceptibility_score * 100) + (horizon / 100) * 15).toFixed(1)}%
+                    </span>
                   </div>
                 </div>
                 <div className="flex-1 rounded-xl border border-white/[0.06] bg-ink-700/60 p-4">
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Risk Tier</p>
                   <div className={`text-xl font-bold ${
-                    analysisResult.risk_level === 'CRITICAL' ? 'text-rose-500' :
-                    analysisResult.risk_level === 'HIGH' ? 'text-amber-500' :
+                    analysisResult.risk_level === 'CRITICAL' || horizon > 80 ? 'text-rose-500' :
+                    analysisResult.risk_level === 'HIGH' || horizon > 60 ? 'text-amber-500' :
                     analysisResult.risk_level === 'MODERATE' ? 'text-yellow-400' : 'text-emerald-400'
                   }`}>
-                    {analysisResult.risk_level}
+                    {horizon > 80 ? 'CRITICAL' : horizon > 60 ? 'HIGH' : analysisResult.risk_level}
                   </div>
                 </div>
               </div>
@@ -152,10 +156,10 @@ export default function DesktopDashboard() {
                   <FileText size={13} /> AI Advisory (Featherless)
                 </p>
                 <div className="prose prose-invert prose-sm max-w-none text-[13px] leading-relaxed text-slate-300">
-                  {/* Super simple markdown render since it's just raw text */}
-                  {analysisResult.ai_explanation.split('\n').map((line, i) => (
-                    <p key={i} className="mb-2">{line.replace(/[#*`]/g, '')}</p>
-                  ))}
+                  <p className="mb-2">
+                    {analysisResult.ai_explanation.replace(/[#*`]/g, '').slice(0, 180)}
+                    {analysisResult.ai_explanation.length > 180 ? '...' : ''}
+                  </p>
                 </div>
               </div>
 
@@ -192,10 +196,20 @@ export default function DesktopDashboard() {
             zoom={analysisResult ? 15 : 12}
             showOverlay={false}
             showEvacuation={false}
-            horizon={0}
+            horizon={horizon}
             center={analysisResult ? [analysisResult.latitude, analysisResult.longitude] : undefined}
             marker={analysisResult ? { lat: analysisResult.latitude, lng: analysisResult.longitude, label: analysisResult.location } : null}
           />
+          
+          {analysisResult && (
+            <div className="absolute inset-x-0 bottom-4 z-[400] flex justify-center px-4">
+              <RainfallSlider
+                value={horizon}
+                onChange={setHorizon}
+                className="w-[420px]"
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

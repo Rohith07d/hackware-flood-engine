@@ -146,8 +146,59 @@ export default function MapCanvasInner({
         containerRef.current._leaflet_id = null;
       }
     };
-  }, [dark, zoom, interactive, showEvacuation, showMarkers, showOverlay, overlayOpacity, center, marker]);
+  }, [dark, zoom, interactive, showEvacuation, showMarkers, showOverlay, overlayOpacity, center?.[0], center?.[1], marker?.lat, marker?.lng]);
 
+  useEffect(() => {
+    if (!severeZoneRef.current || !floodZoneRef.current) return;
+    
+    // Determine the offset to translate polygons to the searched center
+    const targetCenter = center || CENTER;
+    const latOffset = targetCenter[0] - CENTER[0];
+    const lngOffset = targetCenter[1] - CENTER[1];
+    
+    // Scale factor based on horizon (0 to 100)
+    const factor = 0.5 + (horizon / 100) * 1.5;
+    
+    const scaledSevereZone = severeZone.map(([lat, lng]) => [
+      targetCenter[0] + (lat + latOffset - targetCenter[0]) * factor,
+      targetCenter[1] + (lng + lngOffset - targetCenter[1]) * factor,
+    ]);
+    
+    const scaledFloodZone = floodZone.map(([lat, lng]) => [
+      targetCenter[0] + (lat + latOffset - targetCenter[0]) * factor,
+      targetCenter[1] + (lng + lngOffset - targetCenter[1]) * factor,
+    ]);
+    
+    severeZoneRef.current.setLatLngs(scaledSevereZone);
+    floodZoneRef.current.setLatLngs(scaledFloodZone);
+    
+    const intensity = Math.min(1, Math.max(0, horizon / 100));
+    
+    // Inner polygon transitions from orange (#f5b942) to severe red (#a3172e)
+    const rInner = Math.round(245 - (245 - 163) * intensity);
+    const gInner = Math.round(185 - (185 - 23) * intensity);
+    const bInner = Math.round(66 - (66 - 46) * intensity);
+    
+    const innerColor = `rgb(${rInner}, ${gInner}, ${bInner})`;
+    severeZoneRef.current.setStyle({
+      color: innerColor,
+      fillColor: innerColor,
+      fillOpacity: dark ? 0.2 + 0.5 * intensity : 0.3 + 0.5 * intensity,
+    });
+    
+    // Outer polygon transitions from yellow/orange to moderate red (#e2483d)
+    const rOuter = Math.round(250 - (250 - 226) * intensity);
+    const gOuter = Math.round(204 - (204 - 72) * intensity);
+    const bOuter = Math.round(21 - (21 - 61) * intensity);
+    
+    const outerColor = `rgb(${rOuter}, ${gOuter}, ${bOuter})`;
+    floodZoneRef.current.setStyle({
+      color: outerColor,
+      fillColor: outerColor,
+      fillOpacity: dark ? 0.15 + 0.3 * intensity : 0.2 + 0.3 * intensity,
+    });
+    
+  }, [horizon, dark, center?.[0], center?.[1]]);
 
   return (
     <div className={`relative h-full w-full overflow-hidden ${className}`}>
