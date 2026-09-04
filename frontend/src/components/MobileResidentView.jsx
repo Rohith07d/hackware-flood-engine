@@ -103,6 +103,17 @@ export default function MobileResidentView({
             </div>
           )}
 
+          {/* Rainfall Slider */}
+          {analysisResult && (
+            <div className="mt-4">
+              <RainfallSlider
+                value={horizon}
+                onChange={setHorizon}
+                className="w-full"
+              />
+            </div>
+          )}
+
           {/* Map Canvas */}
           <div className="relative mt-4 h-[360px] overflow-hidden rounded-2xl shadow-card">
             <MapCanvas
@@ -151,16 +162,6 @@ export default function MobileResidentView({
               />
             </label>
           </form>
-
-          {analysisResult && (
-            <div className="mb-2 px-1">
-              <RainfallSlider
-                value={horizon}
-                onChange={setHorizon}
-                className="w-full"
-              />
-            </div>
-          )}
 
           {sheetExpanded && !analysisResult && (
             <div className="mt-4 space-y-1">
