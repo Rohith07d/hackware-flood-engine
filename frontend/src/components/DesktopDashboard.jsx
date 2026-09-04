@@ -7,15 +7,16 @@ import MapCanvas from "./MapCanvas.jsx";
 import RainfallSlider from "./RainfallSlider.jsx";
 import { analyzeArea, fetchHealth, fetchModelStatus } from "../lib/api.js";
 
-export default function DesktopDashboard() {
+export default function DesktopDashboard({
+  searchQuery, setSearchQuery,
+  isAnalyzing,
+  analysisResult,
+  horizon, setHorizon,
+  errorMsg,
+  handleSearch
+}) {
   const [backendOnline, setBackendOnline] = useState(false);
   const [modelInfo, setModelInfo] = useState(null);
-  const [horizon, setHorizon] = useState(62);
-  
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [errorMsg, setErrorMsg] = useState("");
 
   // Check backend health & model status on mount
   useEffect(() => {
@@ -31,28 +32,6 @@ export default function DesktopDashboard() {
       }
     });
   }, []);
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    
-    setIsAnalyzing(true);
-    setErrorMsg("");
-    setAnalysisResult(null);
-    
-    try {
-      const res = await analyzeArea(searchQuery);
-      if (res && res.location) {
-        setAnalysisResult(res);
-      } else {
-        setErrorMsg("Analysis failed. Please check the backend or your query.");
-      }
-    } catch (err) {
-      setErrorMsg(err.message || "An error occurred during analysis.");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-ink-900 text-slate-200">

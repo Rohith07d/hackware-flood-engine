@@ -4,31 +4,62 @@ import { useState } from "react";
 import { Smartphone, MonitorSmartphone } from "lucide-react";
 import MobileResidentView from "../components/MobileResidentView.jsx";
 import DesktopDashboard from "../components/DesktopDashboard.jsx";
+import { analyzeArea } from "../lib/api.js";
 
 export default function HomePage() {
-  // "auto" follows the viewport (resident app on small screens, ops
-  // dashboard on large ones). Residents and control-room operators are
-  // different audiences on different devices in real use — the toggle
-  // below makes it easy to preview both from one browser window.
   const [view, setView] = useState("desktop");
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [horizon, setHorizon] = useState(62);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSearch = async (e) => {
+    e?.preventDefault?.();
+    if (!searchQuery.trim()) return;
+    
+    setIsAnalyzing(true);
+    setErrorMsg("");
+    try {
+      const res = await analyzeArea(searchQuery);
+      if (res && res.location) {
+        setAnalysisResult(res);
+      } else {
+        setErrorMsg("Analysis failed. Please check the backend or your query.");
+      }
+    } catch (err) {
+      setErrorMsg(err.message || "An error occurred during analysis.");
+      console.error(err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const sharedProps = {
+    searchQuery, setSearchQuery,
+    isAnalyzing,
+    analysisResult,
+    horizon, setHorizon,
+    errorMsg,
+    handleSearch
+  };
 
   return (
     <div className="h-screen w-screen bg-[#e7edf3]">
       <ViewToggle view={view} setView={setView} />
 
-
-
       {view === "mobile" && (
         <div className="h-full w-full">
           <PhoneFrame>
-            <MobileResidentView />
+            <MobileResidentView {...sharedProps} />
           </PhoneFrame>
         </div>
       )}
 
       {view === "desktop" && (
         <div className="h-full w-full">
-          <DesktopDashboard />
+          <DesktopDashboard {...sharedProps} />
         </div>
       )}
     </div>

@@ -8,32 +8,15 @@ import RainfallSlider from "./RainfallSlider.jsx";
 import { analyzeArea } from "../lib/api.js";
 import { currentRisk, riskLevelMeta } from "../data/floodData.js";
 
-export default function MobileResidentView() {
+export default function MobileResidentView({
+  searchQuery, setSearchQuery,
+  isAnalyzing,
+  analysisResult,
+  horizon, setHorizon,
+  handleSearch
+}) {
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [showEvacuation, setShowEvacuation] = useState(false);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [horizon, setHorizon] = useState(62);
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    
-    setIsAnalyzing(true);
-    setSheetExpanded(false);
-    try {
-      const res = await analyzeArea(searchQuery);
-      if (res && res.location) {
-        setAnalysisResult(res);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
 
   const getRiskDetails = () => {
     if (!analysisResult) return null;
@@ -157,7 +140,7 @@ export default function MobileResidentView() {
             <span className="h-1 w-9 rounded-full bg-black/15" />
           </button>
           
-          <form onSubmit={handleSearch} className="mb-4">
+          <form onSubmit={(e) => { setSheetExpanded(false); handleSearch(e); }} className="mb-4">
             <label className="flex items-center gap-2 rounded-xl bg-ink-900/5 px-3.5 py-3 focus-within:ring-2 focus-within:ring-brand-500">
               <Search size={17} className="text-ink-500" />
               <input
