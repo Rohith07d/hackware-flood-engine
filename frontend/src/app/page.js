@@ -1,44 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Smartphone, MonitorSmartphone } from "lucide-react";
 import MobileResidentView from "../components/MobileResidentView.jsx";
 import DesktopDashboard from "../components/DesktopDashboard.jsx";
 
 export default function HomePage() {
-  // "auto" follows the viewport (resident app on small screens, ops
-  // dashboard on large ones). Residents and control-room operators are
-  // different audiences on different devices in real use — the toggle
-  // below makes it easy to preview both from one browser window.
   const [view, setView] = useState("auto");
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mq.matches);
+    const handler = (e) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  const activeView = view === "auto" ? (isDesktop ? "desktop" : "mobile") : view;
 
   return (
     <div className="h-screen w-screen bg-[#e7edf3]">
       <ViewToggle view={view} setView={setView} />
 
-      {/* Auto: responsive — resident view under lg, dashboard at lg+ */}
-      {view === "auto" && (
-        <>
-          <div className="h-full w-full lg:hidden">
-            <PhoneFrame>
-              <MobileResidentView />
-            </PhoneFrame>
-          </div>
-          <div className="hidden h-full w-full lg:block">
-            <DesktopDashboard />
-          </div>
-        </>
-      )}
-
-      {view === "mobile" && (
+      {activeView === "mobile" ? (
         <div className="h-full w-full">
           <PhoneFrame>
             <MobileResidentView />
           </PhoneFrame>
         </div>
-      )}
-
-      {view === "desktop" && (
+      ) : (
         <div className="h-full w-full">
           <DesktopDashboard />
         </div>

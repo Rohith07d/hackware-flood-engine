@@ -124,6 +124,16 @@ export default function MapCanvasInner({
       }
     });
 
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+        }
+      });
+      resizeObserver.observe(containerRef.current);
+    }
+
     const timer = setTimeout(() => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
@@ -132,6 +142,9 @@ export default function MapCanvasInner({
 
     return () => {
       clearTimeout(timer);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -205,33 +218,64 @@ export default function MapCanvasInner({
       return;
     }
 
-    // Camera fly to selected area
-    map.flyTo([lat, lon], 14, { duration: 0.8 });
+    // Camera reposition to selected area (safe against 0-dimension containers)
+    const container = containerRef.current;
+    const hasValidDimensions = container && container.clientWidth > 0 && container.clientHeight > 0;
+
+    try {
+      if (hasValidDimensions) {
+        map.flyTo([lat, lon], 14, { duration: 0.8 });
+      } else {
+        map.setView([lat, lon], 14);
+      }
+    } catch (camErr) {
+      try {
+        map.setView([lat, lon], 14);
+      } catch (fallbackErr) {
+        // Suppress any silent coordinate calculation errors on hidden elements
+      }
+    }
 
     // A. Render Vicinity Micro-Zones (Low-lying basins, nala corridors)
     zones.forEach((z) => {
-      const polygonLayer = L.polygon(z.polygon, {
-        color: z.gradient_color,
-        weight: 1.5,
-        dashArray: "4 4",
-        fillColor: z.gradient_color,
-        fillOpacity: z.fill_opacity || 0.18,
-        zIndex: 5,
-      }).addTo(map);
-
-      polygonLayer.bindTooltip(
-        `<div class="text-xs">
-          <b>${z.name}</b><br/>
-          <span style="color:${z.gradient_color}">● ${z.severity} (${z.avg_depth_m}m avg depth)</span><br/>
-          <span class="text-slate-500">${z.type}</span>
-        </div>`,
-        { sticky: true }
+      if (!z?.polygon || !Array.isArray(z.polygon)) return;
+      const validPoints = z.polygon.filter(
+        (pt) => Array.isArray(pt) && pt.length >= 2 && Number.isFinite(pt[0]) && Number.isFinite(pt[1])
       );
-      zoneLayersRef.current.push(polygonLayer);
+      if (validPoints.length < 3) return;
+
+      try {
+        const polygonLayer = L.polygon(validPoints, {
+          color: z.gradient_color || "#38bdf8",
+          weight: 1.5,
+          dashArray: "4 4",
+          fillColor: z.gradient_color || "#38bdf8",
+          fillOpacity: z.fill_opacity || 0.18,
+          zIndex: 5,
+        }).addTo(map);
+
+        polygonLayer.bindTooltip(
+          `<div class="text-xs">
+            <b>${z.name || "Micro-Zone"}</b><br/>
+            <span style="color:${z.gradient_color || "#38bdf8"}">● ${z.severity || "Monitored"} (${z.avg_depth_m || 0}m avg depth)</span><br/>
+            <span class="text-slate-500">${z.type || "Catchment"}</span>
+          </div>`,
+          { sticky: true }
+        );
+        zoneLayersRef.current.push(polygonLayer);
+      } catch (zErr) {
+        // Safe polygon rendering fallback
+      }
     });
 
     // B. Render Road Corridors with Gradients
     roads.forEach((r) => {
+      if (!r?.coordinates || !Array.isArray(r.coordinates)) return;
+      const validCoords = r.coordinates.filter(
+        (pt) => Array.isArray(pt) && pt.length >= 2 && Number.isFinite(pt[0]) && Number.isFinite(pt[1])
+      );
+      if (validCoords.length < 2) return;
+
       const isSubmerged = r.inundation_tier in { Critical: 1, Severe: 1 };
       const isPassable = r.inundation_tier === "Passable";
 
@@ -241,110 +285,118 @@ export default function MapCanvasInner({
 
       const isRoadSelected = selectedRoad?.id === r.id;
 
-      // Glow underlay for critical roads or selected road
-      if (r.is_critical || isRoadSelected) {
-        const glowLayer = L.polyline(r.coordinates, {
-          color: isRoadSelected ? "#38bdf8" : r.gradient_color,
-          weight: isRoadSelected ? 10 : 8,
-          opacity: 0.35,
+      try {
+        // Glow underlay for critical roads or selected road
+        if (r.is_critical || isRoadSelected) {
+          const glowLayer = L.polyline(validCoords, {
+            color: isRoadSelected ? "#38bdf8" : (r.gradient_color || "#ef4444"),
+            weight: isRoadSelected ? 10 : 8,
+            opacity: 0.35,
+            lineCap: "round",
+            lineJoin: "round",
+            zIndex: 8,
+          }).addTo(map);
+          roadLayersRef.current.push(glowLayer);
+        }
+
+        // Main Road Polyline
+        const polyline = L.polyline(validCoords, {
+          color: isRoadSelected ? "#38bdf8" : (r.gradient_color || "#ef4444"),
+          weight: isRoadSelected ? 6 : (r.is_critical ? 5 : 4),
+          opacity: isRoadSelected ? 1.0 : (isPassable ? 0.85 : 0.98),
+          dashArray: r.inundation_tier === "Critical" ? "6 3" : undefined,
           lineCap: "round",
           lineJoin: "round",
-          zIndex: 8,
+          zIndex: isRoadSelected ? 15 : (r.is_critical ? 12 : 9),
         }).addTo(map);
-        roadLayersRef.current.push(glowLayer);
+
+        // Popup Content
+        const popupHtml = `
+          <div style="font-family: inherit; min-width: 220px; padding: 2px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 4px;">
+              <b style="font-size: 12px; color: #0f172a;">${r.road_name}</b>
+              <span style="background:${r.gradient_color || "#ef4444"}; color:#fff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;">
+                ${r.inundation_tier}
+              </span>
+            </div>
+            <div style="font-size: 11px; color: #475569; margin-bottom: 3px;">
+              <b>Type:</b> ${r.road_type} (${r.length_km} km)
+            </div>
+            <div style="font-size: 11px; color: #475569; margin-bottom: 3px;">
+              <b>Water Depth:</b> <span style="font-weight:700; color:${r.gradient_color || "#ef4444"};">${r.predicted_water_depth_m} m</span>
+            </div>
+            <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
+              <b>Status:</b> <span style="font-weight:700; color:${r.gradient_color || "#ef4444"};">${r.traffic_status}</span>
+            </div>
+            <div style="font-size: 10px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 4px; font-style: italic;">
+              ${r.advisory}
+            </div>
+          </div>
+        `;
+
+        polyline.bindTooltip(
+          `<b>${r.road_name}</b>: ${r.predicted_water_depth_m}m (${r.inundation_tier})`,
+          { sticky: true }
+        );
+        polyline.bindPopup(popupHtml);
+
+        polyline.on("click", () => {
+          if (onRoadSelectRef.current) {
+            onRoadSelectRef.current(r);
+          }
+        });
+
+        roadLayersRef.current.push(polyline);
+      } catch (rErr) {
+        // Safe polyline rendering fallback
       }
-
-      // Main Road Polyline
-      const polyline = L.polyline(r.coordinates, {
-        color: isRoadSelected ? "#38bdf8" : r.gradient_color,
-        weight: isRoadSelected ? 6 : (r.is_critical ? 5 : 4),
-        opacity: isRoadSelected ? 1.0 : (isPassable ? 0.85 : 0.98),
-        dashArray: r.inundation_tier === "Critical" ? "6 3" : undefined,
-        lineCap: "round",
-        lineJoin: "round",
-        zIndex: isRoadSelected ? 15 : (r.is_critical ? 12 : 9),
-      }).addTo(map);
-
-      // Popup Content
-      const popupHtml = `
-        <div style="font-family: inherit; min-width: 220px; padding: 2px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 4px;">
-            <b style="font-size: 12px; color: #0f172a;">${r.road_name}</b>
-            <span style="background:${r.gradient_color}; color:#fff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;">
-              ${r.inundation_tier}
-            </span>
-          </div>
-          <div style="font-size: 11px; color: #475569; margin-bottom: 3px;">
-            <b>Type:</b> ${r.road_type} (${r.length_km} km)
-          </div>
-          <div style="font-size: 11px; color: #475569; margin-bottom: 3px;">
-            <b>Water Depth:</b> <span style="font-weight:700; color:${r.gradient_color};">${r.predicted_water_depth_m} m</span>
-          </div>
-          <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
-            <b>Status:</b> <span style="font-weight:700; color:${r.gradient_color};">${r.traffic_status}</span>
-          </div>
-          <div style="font-size: 10px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 4px; font-style: italic;">
-            ${r.advisory}
-          </div>
-        </div>
-      `;
-
-      polyline.bindTooltip(
-        `<b>${r.road_name}</b>: ${r.predicted_water_depth_m}m (${r.inundation_tier})`,
-        { sticky: true }
-      );
-      polyline.bindPopup(popupHtml);
-
-      polyline.on("click", () => {
-        if (onRoadSelectRef.current) {
-          onRoadSelectRef.current(r);
-        }
-      });
-
-      roadLayersRef.current.push(polyline);
     });
 
     // C. Area Central Focal Marker
-    const customIcon = L.divIcon({
-      className: "custom-area-marker",
-      html: `
-        <div style="
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 28px;
-          height: 28px;
-        ">
-          <div style="
-            position: absolute;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background-color: ${primaryColor};
-            opacity: 0.35;
-          "></div>
+    try {
+      const customIcon = L.divIcon({
+        className: "custom-area-marker",
+        html: `
           <div style="
             position: relative;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background-color: ${primaryColor};
-            border: 2px solid #ffffff;
-            box-shadow: 0 0 10px ${primaryColor};
-          "></div>
-        </div>
-      `,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
-    });
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+          ">
+            <div style="
+              position: absolute;
+              width: 28px;
+              height: 28px;
+              border-radius: 50%;
+              background-color: ${primaryColor};
+              opacity: 0.35;
+            "></div>
+            <div style="
+              position: relative;
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+              background-color: ${primaryColor};
+              border: 2px solid #ffffff;
+              box-shadow: 0 0 10px ${primaryColor};
+            "></div>
+          </div>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
 
-    areaMarkerRef.current = L.marker([lat, lon], { icon: customIcon, zIndexOffset: 500 })
-      .addTo(map)
-      .bindTooltip(
-        `<b>${areaName}</b><br/>LightGBM Susceptibility: ${(score * 100).toFixed(1)}% (${riskTier})`,
-        { permanent: false, direction: "top", offset: [0, -10] }
-      );
+      areaMarkerRef.current = L.marker([lat, lon], { icon: customIcon, zIndexOffset: 500 })
+        .addTo(map)
+        .bindTooltip(
+          `<b>${areaName}</b><br/>LightGBM Susceptibility: ${(score * 100).toFixed(1)}% (${riskTier})`,
+          { permanent: false, direction: "top", offset: [0, -10] }
+        );
+    } catch (markerErr) {
+      // Safe marker fallback
+    }
   }, [lat, lon, areaName, riskTier, score, primaryColor, selectedArea, selectedRoad, activeFilter]);
 
   // Handle zooming directly to selected road
