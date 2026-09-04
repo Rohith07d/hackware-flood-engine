@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 
 // Risk tier colors for dynamic area styling
 const RISK_COLORS = {
