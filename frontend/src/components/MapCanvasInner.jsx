@@ -94,11 +94,15 @@ export default function MapCanvasInner({
     });
     mapInstanceRef.current = map;
 
-    // CartoDB Voyager tiles (clean, highly readable across dark/light themes)
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a> | &copy; OpenStreetMap',
-      maxZoom: 19,
-    }).addTo(map);
+    // CartoDB Voyager tiles (with key parameter to remove watermark)
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_2wfl_1_2abafc0fe8da36eb5a7b4f5b",
+      {
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a> | &copy; OpenStreetMap',
+        maxZoom: 19,
+        subdomains: "abcd",
+      }
+    ).addTo(map);
 
     // Map click handler for interactive area selection
     map.on("click", (e) => {
