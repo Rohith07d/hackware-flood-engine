@@ -1,4 +1,3 @@
-import hashlib
 from typing import Any, Dict, List
 from datetime import datetime, timezone
 import math
@@ -8,14 +7,13 @@ def get_utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def collect_ffs_snapshot(latitude: float = 17.4948, longitude: float = 78.6810) -> Dict[str, Any]:
+def collect_ffs_snapshot(latitude: float = 13.0827, longitude: float = 80.2707) -> Dict[str, Any]:
     """
     Collect Flash Flood Guidance (FFS) snapshot for specified coordinates.
     Calculates basin saturation index, precipitation accumulation, and threshold metrics.
     """
-    # Deterministic MD5 spatial hash for consistent demo values across coordinates
-    coord_key = f"{round(latitude, 2)}_{round(longitude, 2)}".encode("utf-8")
-    coord_seed = int(hashlib.md5(coord_key).hexdigest(), 16) % 100
+    # Deterministic spatial hash for consistent demo values across coordinates
+    coord_seed = abs(hash(f"{round(latitude, 2)}_{round(longitude, 2)}")) % 100
 
     base_rain_1h = round(15.0 + (coord_seed * 0.45), 1)
     base_rain_3h = round(base_rain_1h * 2.3, 1)

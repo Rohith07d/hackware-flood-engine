@@ -44,35 +44,34 @@ class AlertOrchestrator:
             radius_km=radius_km
         )
 
-        flood_prob = susceptibility
-
-        # Compound impact score calculation (P7 & P8)
-        # Weights nearby vulnerable assets more heavily
-        total_weight = 0.0
+        # Calculate threatened infrastructure based on REAL model output
+        # Assets are only threatened if susceptibility is elevated
+        impact_multiplier = 0.0
         threatened_items = []
-        for asset in infrastructure_assets:
-            dist = max(0.4, asset.get("distance_km", 1.0))
-            vuln = asset.get("vulnerability_score", 0.5)
-            # Inverse distance weighting for vulnerability impact
-            weight = vuln / (dist ** 0.5)
-            total_weight += weight
 
-            # Distance-aware threat rule: closer assets are threatened at lower probabilities,
-            # while assets further away require higher flood probabilities
-            threat_threshold = 0.35 * (dist / 1.5)
-            if flood_prob >= threat_threshold:
-                threatened_items.append(asset)
+        if susceptibility >= 0.25:
+            for asset in infrastructure_assets:
+                dist = max(0.2, asset.get("distance_km", 1.0))
+                vuln = asset.get("vulnerability_score", 0.5)
+                weight = vuln / (dist ** 0.5)
+                impact_multiplier += weight
 
-        # Bound impact strictly in [0, 1) and blend with flood probability (P7)
-        impact = total_weight / (1.0 + total_weight) if total_weight > 0 else 0.0
-        compound_score = round(min(1.0, 0.7 * flood_prob + 0.3 * impact), 3)
+                # Threatened threshold: high susceptibility or direct proximity
+                if susceptibility >= 0.50 or (susceptibility >= 0.25 and dist <= 1.5):
+                    threatened_items.append(asset)
 
-        # Re-assess severity if compound score escalates risk (P7)
+        # Compound risk score normalized
+        compound_score = round(min(1.0, susceptibility * (1.0 + (impact_multiplier * 0.15))), 4)
+
         severity = hazard_level
-        if compound_score >= 0.80:
+        if compound_score >= 0.75:
             severity = "CRITICAL"
-        elif compound_score >= 0.55 and severity in ("LOW", "MODERATE", "Low", "Moderate"):
+        elif compound_score >= 0.50:
             severity = "HIGH"
+        elif compound_score >= 0.25:
+            severity = "MODERATE"
+        else:
+            severity = "LOW"
 
         return {
             "latitude": latitude,

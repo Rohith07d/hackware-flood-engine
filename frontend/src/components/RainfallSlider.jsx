@@ -4,35 +4,36 @@ export default function RainfallSlider({
   value = 62,
   onChange,
   min = 0,
-  max = 120,
+  max = 100,
   className = "",
 }) {
   return (
     <div
-      className={`flex items-center gap-3 rounded-xl border border-white/[0.12] bg-ink-800/95 px-5 py-3 shadow-xl backdrop-blur-md ${className}`}
+      className={`flex items-center gap-4 rounded-lg border border-white/[0.08] bg-ink-800/90 px-4 py-3 backdrop-blur-sm ${className}`}
     >
-      <div className="flex flex-col">
-        <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          Simulated Rain
-        </span>
-        <span className="whitespace-nowrap font-mono text-[13px] font-bold text-brand-400">
-          {value} mm
-        </span>
+      <span className="whitespace-nowrap text-[11px] font-medium text-slate-400">
+        0mm Rain
+      </span>
+      <div className="relative flex-1 w-full">
+        <div
+          className="pointer-events-none absolute -top-8 -translate-x-1/2 rounded bg-white px-2 py-1 text-[11px] font-extrabold text-ink-900 shadow-lg"
+          style={{ left: `${(value / max) * 100}%` }}
+        >
+          {value}mm
+          <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-white" />
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange && onChange(Number(e.target.value))}
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gradient-to-r from-risk-low via-risk-moderate to-risk-high accent-white outline-none"
+          aria-label="Rainfall amount slider"
+        />
       </div>
       <span className="whitespace-nowrap text-[11px] font-medium text-slate-400">
-        0 mm
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => onChange && onChange(Number(e.target.value))}
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gradient-to-r from-risk-low via-risk-moderate to-risk-high accent-brand-400"
-        aria-label="Rainfall simulation slider"
-      />
-      <span className="whitespace-nowrap text-[11px] font-medium text-slate-400">
-        {max} mm
+        100mm+ Rain
       </span>
     </div>
   );

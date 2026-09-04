@@ -102,60 +102,16 @@ export async function generateEmergencyAlert(params) {
   }
 }
 
-export async function analyzeArea(params) {
+export async function analyzeArea(location) {
   try {
     const res = await fetch(`${API_BASE_URL}/analyze-area`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(params),
+      body: JSON.stringify({ location }),
     });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.detail || `Area analysis failed (${res.status})`);
-    }
+    if (!res.ok) throw new Error(`Area analysis failed (${res.status})`);
     return await res.json();
   } catch (err) {
-    console.error("analyzeArea error:", err);
-    return null;
-  }
-}
-
-export async function fetchFeatherlessHealth() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/health/featherless`);
-    if (!res.ok) throw new Error(`Featherless health check failed (${res.status})`);
-    return await res.json();
-  } catch (err) {
-    return { status: "error", connected: false, message: err.message };
-  }
-}
-
-export async function fetchSearchSuggestions(query = "") {
-  try {
-    const res = await fetch(`${API_BASE_URL}/search-suggestions?q=${encodeURIComponent(query)}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.suggestions || [];
-  } catch (err) {
-    console.error("fetchSearchSuggestions error:", err);
-    return [];
-  }
-}
-
-export async function searchAreaWithAI(query, rainfall_mm = 65) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/search-area`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, rainfall_mm }),
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.detail || `Search area failed (${res.status})`);
-    }
-    return await res.json();
-  } catch (err) {
-    console.error("searchAreaWithAI error:", err);
     return null;
   }
 }

@@ -19,18 +19,15 @@ from .schemas import (
     AlertGenerationResponse,
     InfrastructureItem,
     HazardMapMetadataResponse,
-    AreaAnalysisRequest,
-    AreaAnalysisResponse,
-    SearchAreaRequest,
+    AnalyzeAreaRequest,
+    AnalyzeAreaResponse,
 )
-from .geocoding_service import geocoding_service
 from .ml_predictor import FEATURE_NAMES, LightGBMFloodPredictor, predictor
 from .terrain_service import terrain_service
 from .rainfall_service import load_historical_rainfall_series, BASELINE_RAIN_SUMMARY
 from .ffs_collector import collect_ffs_snapshot, generate_regional_grid
 from .supabase_service import supabase_service
 from .alert_orchestrator import AlertOrchestrator
-from .featherless_agent import featherless_agent
 
 # Application singletons
 orchestrator: Optional[AlertOrchestrator] = None
@@ -64,13 +61,12 @@ app.add_middleware(
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 def health_check() -> HealthResponse:
-    """Service health, model readiness, database, DEM cache, and Featherless status check."""
+    """Service health, model readiness, database, and DEM cache status check."""
     global orchestrator
-    model_ready = predictor.is_loaded or (orchestrator is not None and orchestrator.predictor.is_loaded)
+    model_ready = (orchestrator is not None and orchestrator.predictor.model is not None) or (predictor.model is not None)
     supabase_configured = supabase_service.is_connected
-    llm_configured = featherless_agent.is_configured
+    llm_configured = orchestrator is not None and orchestrator.llm_agent.is_configured
     dem_cached = terrain_service.is_loaded
-    featherless_status = "connected" if featherless_agent.is_configured else "not_configured"
 
     return HealthResponse(
         status="ok",
@@ -78,76 +74,29 @@ def health_check() -> HealthResponse:
         model_ready=model_ready,
         supabase_configured=supabase_configured,
         llm_configured=llm_configured,
-        featherless=featherless_status,
         dem_cached=dem_cached,
     )
 
-
 @app.get("/health/featherless", tags=["Health"])
-def featherless_health() -> Dict[str, Any]:
-    """Verify live connectivity and latency to Featherless AI."""
-    return featherless_agent.check_health()
+def health_check_featherless():
+    """Verify Featherless AI connectivity."""
+    from .featherless_agent import FeatherlessAgent
+    agent = FeatherlessAgent()
+    return {
+        "is_configured": agent.is_configured,
+        "model": settings.featherless_model
+    }
 
-
-@app.post("/analyze-area", response_model=AreaAnalysisResponse, tags=["AI Analysis"])
-def analyze_area_endpoint(request: AreaAnalysisRequest) -> AreaAnalysisResponse:
-    """
-    User-selected area flood analysis orchestrated by Featherless AI:
-    1. Resolves real geospatial coordinates and boundary.
-    2. Samples 9 real DEM features from terrain service.
-    3. Derives 4 rainfall scenario features from rainfall service.
-    4. Evaluates authoritative 13-feature LightGBM model.
-    5. Synthesizes tactical risk summary & recommendations via Featherless.
-    6. Stores result record in Supabase.
-    """
+@app.post("/analyze-area", response_model=AnalyzeAreaResponse, tags=["Prediction"])
+def analyze_area(request: AnalyzeAreaRequest) -> AnalyzeAreaResponse:
+    """End-to-End Area-based flood AI with Featherless."""
+    from .featherless_agent import FeatherlessAgent
+    agent = FeatherlessAgent()
     try:
-        result = featherless_agent.analyze_area(
-            location_name=request.location_name,
-            latitude=request.latitude,
-            longitude=request.longitude,
-            bounding_box=request.bounding_box,
-            rainfall_mm=request.rainfall_mm,
-        )
-        return AreaAnalysisResponse(**result)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Area flood analysis failed: {str(exc)}"
-        )
-
-
-@app.get("/search-suggestions", tags=["AI Analysis"])
-def search_suggestions_endpoint(
-    q: str = Query(default="", description="Query string for locality typeahead")
-) -> Dict[str, Any]:
-    """Fast typeahead autocomplete suggestions for Hyderabad localities, IT corridors, and landmarks."""
-    suggestions = geocoding_service.search_suggestions(q, limit=8)
-    return {"status": "success", "query": q, "suggestions": suggestions}
-
-
-@app.post("/search-area", response_model=AreaAnalysisResponse, tags=["AI Analysis"])
-def search_area_endpoint(request: SearchAreaRequest) -> AreaAnalysisResponse:
-    """
-    Intelligent location search powered by Featherless AI:
-    Parses natural language queries (e.g. 'Begumpet under 90mm rain' or 'Cyber Towers IT corridor'),
-    resolves the target Hyderabad locality, and executes the complete area and road inundation analysis.
-    """
-    try:
-        interpreted = featherless_agent.interpret_search_query(request.query)
-        target_rain = request.rainfall_mm if request.rainfall_mm is not None else interpreted.get("rainfall_mm", 65.0)
-
-        result = featherless_agent.analyze_area(
-            location_name=interpreted.get("location_name"),
-            latitude=interpreted.get("latitude"),
-            longitude=interpreted.get("longitude"),
-            rainfall_mm=target_rain,
-        )
-        return AreaAnalysisResponse(**result)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Intelligent area search failed: {str(exc)}"
-        )
+        res = agent.analyze_area(request.location)
+        return AnalyzeAreaResponse(**res)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/model/status", response_model=ModelStatusResponse, tags=["Model"])
@@ -216,13 +165,31 @@ def batch_predict(request: BatchPredictionRequest) -> BatchPredictionResponse:
     if not orchestrator:
         orchestrator = AlertOrchestrator()
 
-    points_dicts = [pt.model_dump() for pt in request.points]
-    raw_preds = orchestrator.predictor.predict_batch(points_dicts)
-
     results = []
     high_risk = 0
-    for pt, pred in zip(request.points, raw_preds):
-        if pred["hazard_level"] in ("High", "Critical") or pred["risk_level"] in ("HIGH", "CRITICAL"):
+    for pt in request.points:
+        overrides = {
+            "elevation": pt.elevation,
+            "slope": pt.slope,
+            "aspect": pt.aspect,
+            "curvature": pt.curvature,
+            "tri": pt.tri,
+            "twi": pt.twi,
+            "rel_elev": pt.rel_elev,
+            "flow_acc_log": pt.flow_acc_log,
+            "dist_to_stream": pt.dist_to_stream,
+            "total_rainfall_mm": pt.total_rainfall_mm,
+            "max_hourly_mm": pt.max_hourly_mm,
+            "max_cum24h_mm": pt.max_cum24h_mm,
+            "max_api": pt.max_api,
+        }
+        pred = orchestrator.predictor.predict_coordinate(
+            latitude=pt.latitude,
+            longitude=pt.longitude,
+            rainfall_mm=pt.rainfall_mm,
+            overrides=overrides,
+        )
+        if pred["risk_level"] in ("HIGH", "CRITICAL"):
             high_risk += 1
         results.append(
             FloodPredictionResponse(
@@ -280,8 +247,8 @@ def get_rainfall_timeseries():
 
 @app.get("/ffs/snapshot", tags=["Flash Flood Guidance"])
 def get_ffs_snapshot(
-    latitude: float = Query(17.4948, ge=-90.0, le=90.0),
-    longitude: float = Query(78.6810, ge=-180.0, le=180.0)
+    latitude: float = Query(17.4065, ge=-90.0, le=90.0),
+    longitude: float = Query(78.4772, ge=-180.0, le=180.0),
 ):
     """Retrieve real-time Flash Flood Guidance (FFS) metrics and saturation snapshot."""
     return collect_ffs_snapshot(latitude=latitude, longitude=longitude)
@@ -289,8 +256,8 @@ def get_ffs_snapshot(
 
 @app.get("/ffs/grid", tags=["Flash Flood Guidance"])
 def get_ffs_grid(
-    center_lat: float = Query(17.4948, ge=-90.0, le=90.0),
-    center_lon: float = Query(78.6810, ge=-180.0, le=180.0),
+    center_lat: float = Query(17.4065, ge=-90.0, le=90.0),
+    center_lon: float = Query(78.4772, ge=-180.0, le=180.0),
     grid_size: int = Query(3, ge=1, le=7),
     step_deg: float = Query(0.04, ge=0.01, le=0.2),
 ):
@@ -370,8 +337,8 @@ def list_recent_alerts(limit: int = Query(10, ge=1, le=50)):
 
 @app.get("/infrastructure", response_model=List[InfrastructureItem], tags=["Infrastructure"])
 def get_infrastructure(
-    latitude: float = Query(17.4948, ge=-90.0, le=90.0),
-    longitude: float = Query(78.6810, ge=-180.0, le=180.0),
+    latitude: float = Query(17.4065, ge=-90.0, le=90.0),
+    longitude: float = Query(78.4772, ge=-180.0, le=180.0),
     radius_km: float = Query(10.0, ge=0.5, le=50.0),
 ) -> List[InfrastructureItem]:
     """Retrieve critical infrastructure nodes within radius."""

@@ -19,7 +19,7 @@ class Settings:
     # Featherless AI / OpenAI LLM Config
     featherless_base_url: str = os.getenv("FEATHERLESS_BASE_URL", "https://api.featherless.ai/v1")
     featherless_api_key: str = os.getenv("FEATHERLESS_API_KEY", "")
-    featherless_model: str = os.getenv("FEATHERLESS_MODEL", "Qwen/Qwen2.5-72B-Instruct")
+    featherless_model: str = os.getenv("FEATHERLESS_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct")
 
     # Supabase Config
     supabase_url: str = os.getenv("SUPABASE_URL", "")

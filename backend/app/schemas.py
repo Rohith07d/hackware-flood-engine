@@ -13,7 +13,6 @@ class HealthResponse(BaseModel):
     model_ready: bool = False
     supabase_configured: bool = False
     llm_configured: bool = False
-    featherless: Optional[str] = "connected"
     dem_cached: bool = False
     timestamp: datetime = Field(default_factory=get_utc_now)
 
@@ -122,6 +121,22 @@ class AlertGenerationResponse(BaseModel):
     generated_at: datetime = Field(default_factory=get_utc_now)
 
 
+class AnalyzeAreaRequest(BaseModel):
+    location: str = Field(..., description="Name of the area to analyze (e.g. 'Gachibowli, Hyderabad')")
+
+
+class AnalyzeAreaResponse(BaseModel):
+    location: str
+    latitude: float
+    longitude: float
+    susceptibility_score: float
+    risk_level: str
+    features_used: Dict[str, Any]
+    ai_explanation: str
+    timestamp: datetime = Field(default_factory=get_utc_now)
+    model_version: str
+
+
 class HazardMapMetadataResponse(BaseModel):
     crs: str
     bounds: Dict[str, float]
@@ -129,39 +144,3 @@ class HazardMapMetadataResponse(BaseModel):
     shape: List[int]
     overlay_url: str
     disclaimer: str
-
-
-class AreaAnalysisRequest(BaseModel):
-    location_name: Optional[str] = Field(default=None, description="Name of locality or area, e.g. 'Gachibowli, Hyderabad'")
-    latitude: Optional[float] = Field(default=None, ge=-90.0, le=90.0, description="Optional center latitude")
-    longitude: Optional[float] = Field(default=None, ge=-180.0, le=180.0, description="Optional center longitude")
-    bounding_box: Optional[List[float]] = Field(default=None, description="Optional [south, west, north, east]")
-    rainfall_mm: float = Field(default=65.0, ge=0.0, description="Rainfall scenario accumulation in mm")
-
-
-class AreaAnalysisResponse(BaseModel):
-    status: str
-    area_name: str
-    coordinates: Dict[str, float]
-    bounding_box: List[float]
-    rainfall_scenario_mm: float
-    susceptibility_score: float
-    risk_tier: str
-    hazard_level: str
-    features_13: Dict[str, float]
-    drivers: List[Dict[str, Any]]
-    ai_summary: str
-    recommendations: List[str]
-    ai_source: str
-    affected_roads: Optional[List[Dict[str, Any]]] = None
-    vicinity_zones: Optional[List[Dict[str, Any]]] = None
-    supabase_record_id: Optional[str] = None
-    storage_status: Optional[str] = None
-    timestamp: Optional[str] = None
-    orchestration_log: Optional[List[Dict[str, Any]]] = None
-
-
-class SearchAreaRequest(BaseModel):
-    query: str = Field(description="Search text or natural language query, e.g. 'Begumpet under 90mm rain'")
-    rainfall_mm: Optional[float] = Field(default=None, description="Optional override rainfall in mm")
-
