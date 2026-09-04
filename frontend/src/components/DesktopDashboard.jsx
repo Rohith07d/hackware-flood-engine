@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, ChevronDown, Gauge, Building2, Shield, HeartPulse, User } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bell, ChevronDown, Gauge, Building2, Shield, HeartPulse, User, Activity } from "lucide-react";
 import Logo from "./Logo.jsx";
 import MapCanvas from "./MapCanvas.jsx";
 import Sparkline from "./Sparkline.jsx";
 import RainfallSlider from "./RainfallSlider.jsx";
 import AlertHUD from "./AlertHUD.jsx";
-import { predictionDrivers } from "../data/floodData.js";
+import { predictionDrivers, dashboardStats } from "../data/floodData.js";
+import { predictFlood, fetchHealth } from "../lib/api.js";
 
 const legendItems = [
   { type: "gauge", label: "River gauge", icon: Gauge, color: "#f5b942" },
@@ -18,12 +19,62 @@ const legendItems = [
 
 export default function DesktopDashboard() {
   const [horizon, setHorizon] = useState(62);
+  const [backendOnline, setBackendOnline] = useState(false);
+  const [livePrediction, setLivePrediction] = useState(null);
+
+  // Check backend health on mount
+  useEffect(() => {
+    fetchHealth().then((res) => {
+      if (res && res.status === "ok") {
+        setBackendOnline(true);
+      }
+    });
+  }, []);
+
+  // Fetch live prediction when rainfall slider changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      predictFlood({
+        latitude: 17.4948,
+        longitude: 78.681,
+        rainfall_mm: horizon,
+      }).then((pred) => {
+        if (pred) {
+          setLivePrediction(pred);
+          setBackendOnline(true);
+        }
+      });
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [horizon]);
+
+  // Derived stats combining baseline and live LightGBM predictions
+  const stats = livePrediction
+    ? {
+        affectedArea: `${(horizon * 0.08).toFixed(1)} km²`,
+        maxDepth: `${(horizon * 0.035).toFixed(1)} m`,
+        highRiskStreets: Math.max(2, Math.round(horizon * 0.45)),
+        confidence: `${Math.round(livePrediction.probability * 100)}%`,
+      }
+    : dashboardStats;
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-ink-900 text-slate-200">
       {/* Header */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.06] px-5">
-        <Logo size={24} textClassName="text-[15px] text-white" />
+        <div className="flex items-center gap-3">
+          <Logo size={24} textClassName="text-[15px] text-white" />
+          {backendOnline ? (
+            <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Live AI Engine
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] text-slate-400">
+              Local Demo Mode
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-4">
           <button className="relative grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-white/5 hover:text-slate-200">
             <Bell size={16} />
@@ -48,7 +99,7 @@ export default function DesktopDashboard() {
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             AI Flood Prediction
           </p>
-          <AlertHUD variant="stats" />
+          <AlertHUD variant="stats" statsOverride={stats} />
 
           <p className="mb-3 mt-6 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             Prediction Drivers

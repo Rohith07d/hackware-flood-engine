@@ -3,27 +3,34 @@
 import { Waves, ChevronRight } from "lucide-react";
 import { currentRisk, riskLevelMeta, dashboardStats } from "../data/floodData.js";
 
-export default function AlertHUD({ variant = "card", onEvacuationClick }) {
-  const risk = riskLevelMeta[currentRisk.level] || riskLevelMeta.high;
+export default function AlertHUD({
+  variant = "card",
+  onEvacuationClick,
+  riskOverride,
+  statsOverride,
+}) {
+  const activeStats = statsOverride || dashboardStats;
+  const activeRiskData = riskOverride || currentRisk;
+  const risk = riskLevelMeta[activeRiskData.level] || riskLevelMeta.high;
 
   if (variant === "stats") {
     return (
       <div className="space-y-3.5 rounded-xl border border-white/[0.06] bg-ink-700/60 p-4" aria-label="Alert HUD Stats">
         <div>
           <p className="text-[12.5px] text-slate-400">Predicted Affected Area</p>
-          <p className="mt-0.5 font-mono text-xl font-bold text-brand-400">{dashboardStats.affectedArea}</p>
+          <p className="mt-0.5 font-mono text-xl font-bold text-brand-400">{activeStats.affectedArea}</p>
         </div>
         <div>
           <p className="text-[12.5px] text-slate-400">Max Predicted Depth</p>
-          <p className="mt-0.5 font-mono text-xl font-bold text-brand-400">{dashboardStats.maxDepth}</p>
+          <p className="mt-0.5 font-mono text-xl font-bold text-brand-400">{activeStats.maxDepth}</p>
         </div>
         <div>
           <p className="text-[12.5px] text-slate-400">High-Risk Streets</p>
-          <p className="mt-0.5 font-mono text-xl font-bold text-brand-400">{dashboardStats.highRiskStreets}</p>
+          <p className="mt-0.5 font-mono text-xl font-bold text-brand-400">{activeStats.highRiskStreets}</p>
         </div>
         <div>
           <p className="text-[12.5px] text-slate-400">Prediction Confidence</p>
-          <p className="mt-0.5 font-mono text-xl font-bold text-brand-400">{dashboardStats.confidence}</p>
+          <p className="mt-0.5 font-mono text-xl font-bold text-brand-400">{activeStats.confidence}</p>
         </div>
       </div>
     );
