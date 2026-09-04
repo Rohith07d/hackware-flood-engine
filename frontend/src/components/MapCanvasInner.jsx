@@ -146,9 +146,8 @@ export default function MapCanvasInner({
         containerRef.current._leaflet_id = null;
       }
     };
-  }, [dark, zoom, interactive, showEvacuation, showMarkers, showOverlay, overlayOpacity]);
+  }, [dark, zoom, interactive, showEvacuation, showMarkers, showOverlay, overlayOpacity, center, marker]);
 
-  }, [horizon, dark, center]);
 
   return (
     <div className={`relative h-full w-full overflow-hidden ${className}`}>
