@@ -146,7 +146,7 @@ export default function MapCanvasInner({
         containerRef.current._leaflet_id = null;
       }
     };
-  }, [dark, zoom, interactive, showEvacuation, showMarkers, showOverlay, overlayOpacity, center?.[0], center?.[1], marker?.lat, marker?.lng]);
+  }, [dark, zoom, interactive, showEvacuation, showMarkers, showOverlay, overlayOpacity, center ? center.join(',') : '', marker ? `${marker.lat},${marker.lng}` : '']);
 
   useEffect(() => {
     if (!severeZoneRef.current || !floodZoneRef.current) return;
@@ -198,7 +198,7 @@ export default function MapCanvasInner({
       fillOpacity: dark ? 0.15 + 0.3 * intensity : 0.2 + 0.3 * intensity,
     });
     
-  }, [horizon, dark, center?.[0], center?.[1]]);
+  }, [horizon, dark, center ? center.join(',') : '']);
 
   return (
     <div className={`relative h-full w-full overflow-hidden ${className}`}>
