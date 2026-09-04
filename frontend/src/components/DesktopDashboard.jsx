@@ -5,7 +5,6 @@ import {
   Search,
   MapPin,
   Sparkles,
-  Layers,
   CheckCircle2,
   AlertTriangle,
   Database,
@@ -89,8 +88,7 @@ export default function DesktopDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [backendHealth, setBackendHealth] = useState(null);
   const [featherlessStatus, setFeatherlessStatus] = useState(null);
-  const [showReferenceRaster, setShowReferenceRaster] = useState(false);
-  const [activeTab, setActiveTab] = useState("roads"); // "roads" | "overview" | "tactics" | "features"
+  const [activeTab, setActiveTab] = useState("roads"); // "roads" | "advisory" | "factors"
 
   const searchContainerRef = useRef(null);
   const currentCoordsRef = useRef({ latitude: 17.4401, longitude: 78.3489, location_name: "Gachibowli, Hyderabad" });
@@ -307,28 +305,15 @@ export default function DesktopDashboard() {
           )}
         </div>
 
-        {/* Action Controls & Health */}
+        {/* System Status */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowReferenceRaster(!showReferenceRaster)}
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11.5px] font-medium transition ${
-              showReferenceRaster
-                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                : "bg-white/5 text-slate-400 hover:bg-white/10 border border-white/10"
-            }`}
-            title="Toggle reference flood susceptibility raster overlay"
-          >
-            <Layers size={13} />
-            <span>Ref Raster: {showReferenceRaster ? "ON" : "OFF"}</span>
-          </button>
-
-          <div className="hidden lg:flex items-center gap-2 text-[11px] text-slate-400">
+          <div className="flex items-center gap-2 text-[11px] text-slate-400">
             <span
               className={`h-2 w-2 rounded-full ${
                 backendHealth?.status === "ok" ? "bg-emerald-400" : "bg-red-400"
               }`}
             />
-            <span>API Online</span>
+            <span>Engine Active</span>
           </div>
         </div>
       </header>
@@ -449,134 +434,199 @@ export default function DesktopDashboard() {
               </div>
             </div>
 
-            {/* Tabs for Intelligence Views */}
-            <div className="flex rounded-lg bg-slate-800/80 p-0.5 border border-white/10 text-[11px]">
+            {/* Tabs for Simple and Understandable Intelligence Views */}
+            <div className="flex rounded-lg bg-slate-800/80 p-0.5 border border-white/10 text-[11.5px]">
               <button
                 onClick={() => setActiveTab("roads")}
-                className={`flex-1 rounded-md py-1 font-medium transition ${
+                className={`flex-1 rounded-md py-1.5 font-medium transition ${
                   activeTab === "roads" ? "bg-cyan-500/20 text-cyan-300 font-semibold" : "text-slate-400 hover:text-slate-200"
                 }`}
               >
                 Roads ({roads.length})
               </button>
               <button
-                onClick={() => setActiveTab("overview")}
-                className={`flex-1 rounded-md py-1 font-medium transition ${
-                  activeTab === "overview" ? "bg-cyan-500/20 text-cyan-300 font-semibold" : "text-slate-400 hover:text-slate-200"
+                onClick={() => setActiveTab("advisory")}
+                className={`flex-1 rounded-md py-1.5 font-medium transition ${
+                  activeTab === "advisory" ? "bg-cyan-500/20 text-cyan-300 font-semibold" : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                AI Summary
+                AI Advisory
               </button>
               <button
-                onClick={() => setActiveTab("tactics")}
-                className={`flex-1 rounded-md py-1 font-medium transition ${
-                  activeTab === "tactics" ? "bg-cyan-500/20 text-cyan-300 font-semibold" : "text-slate-400 hover:text-slate-200"
+                onClick={() => setActiveTab("factors")}
+                className={`flex-1 rounded-md py-1.5 font-medium transition ${
+                  activeTab === "factors" ? "bg-cyan-500/20 text-cyan-300 font-semibold" : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                Directives
-              </button>
-              <button
-                onClick={() => setActiveTab("features")}
-                className={`flex-1 rounded-md py-1 font-medium transition ${
-                  activeTab === "features" ? "bg-cyan-500/20 text-cyan-300 font-semibold" : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                13 Features
+                Terrain & Rain
               </button>
             </div>
 
-            {/* Tab 1: Detailed Inundated Roads & Corridors Table */}
+            {/* Tab 1: Roads & Traffic Passability */}
             {activeTab === "roads" && (
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-white flex items-center gap-1.5">
                     <Car size={13} className="text-cyan-400" />
-                    Vicinity Road Inundation
+                    Monitored Corridors
                   </span>
-                  <span className="text-[10px] text-slate-400">Click road to focus</span>
+                  <span className="text-[10px] text-slate-400">Click road to locate</span>
                 </div>
 
                 <div className="space-y-2">
-                  {roads.map((road) => {
-                    const isSelected = selectedRoad?.id === road.id;
-                    return (
-                      <div
-                        key={road.id}
-                        onClick={() => setSelectedRoad(road)}
-                        className={`rounded-xl border p-3 transition cursor-pointer ${
-                          isSelected
-                            ? "border-cyan-400 bg-cyan-950/30 ring-1 ring-cyan-400"
-                            : "border-white/10 bg-slate-800/50 hover:bg-slate-800/80"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="text-[12.5px] font-bold text-white leading-tight">
-                              {road.road_name}
+                  {roads.length === 0 ? (
+                    <div className="text-center py-6 text-slate-400 text-xs">
+                      No road flooding detected in this sector under current rainfall.
+                    </div>
+                  ) : (
+                    roads.map((road) => {
+                      const isSelected = selectedRoad?.id === road.id;
+                      return (
+                        <div
+                          key={road.id}
+                          onClick={() => setSelectedRoad(road)}
+                          className={`rounded-xl border p-3 transition cursor-pointer ${
+                            isSelected
+                              ? "border-cyan-400 bg-cyan-950/30 ring-1 ring-cyan-400"
+                              : "border-white/10 bg-slate-800/50 hover:bg-slate-800/80"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="text-[12.5px] font-bold text-white leading-tight">
+                                {road.road_name}
+                              </div>
+                              <div className="text-[10.5px] text-slate-400 mt-0.5">
+                                {road.road_type} • {road.length_km} km
+                              </div>
                             </div>
-                            <div className="text-[10.5px] text-slate-400 mt-0.5">
-                              {road.road_type} • {road.length_km} km
-                            </div>
-                          </div>
-                          <span
-                            className={`rounded px-1.5 py-0.5 text-[9.5px] font-bold whitespace-nowrap ${road.badge_class}`}
-                          >
-                            {road.inundation_tier}
-                          </span>
-                        </div>
-
-                        {/* Water Depth Progress */}
-                        <div className="mt-2 space-y-1">
-                          <div className="flex justify-between text-[10.5px] font-mono">
-                            <span className="text-slate-400">Predicted Water Depth:</span>
-                            <span className="font-bold" style={{ color: road.gradient_color }}>
-                              {road.predicted_water_depth_m} m
+                            <span
+                              className={`rounded px-2 py-0.5 text-[10px] font-bold whitespace-nowrap ${road.badge_class}`}
+                            >
+                              {road.inundation_tier}
                             </span>
                           </div>
-                          <div className="h-1.5 w-full rounded-full bg-slate-700/80 overflow-hidden">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${Math.min(100, (road.predicted_water_depth_m / 2.0) * 100)}%`,
-                                backgroundColor: road.gradient_color,
-                              }}
-                            />
+
+                          {/* Water Depth Progress */}
+                          <div className="mt-2 space-y-1">
+                            <div className="flex justify-between text-[11px] font-mono">
+                              <span className="text-slate-400">Water Depth:</span>
+                              <span className="font-bold" style={{ color: road.gradient_color }}>
+                                {road.predicted_water_depth_m} m
+                              </span>
+                            </div>
+                            <div className="h-1.5 w-full rounded-full bg-slate-700/80 overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${Math.min(100, (road.predicted_water_depth_m / 2.0) * 100)}%`,
+                                  backgroundColor: road.gradient_color,
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Traffic Status & Detour */}
+                          <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between text-[11px]">
+                            <span className="font-semibold" style={{ color: road.gradient_color }}>
+                              {road.traffic_status}
+                            </span>
+                            <span className="text-cyan-400 flex items-center gap-1 text-[10.5px]">
+                              <span>Locate on Map</span>
+                              <ArrowUpRight size={12} />
+                            </span>
                           </div>
                         </div>
-
-                        {/* Traffic Status & Detour */}
-                        <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between text-[10.5px]">
-                          <span className="font-semibold" style={{ color: road.gradient_color }}>
-                            {road.traffic_status}
-                          </span>
-                          <span className="text-cyan-400 flex items-center gap-1 text-[10px]">
-                            <span>Locate</span>
-                            <ArrowUpRight size={11} />
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Tab 2: Featherless AI Executive Situation Analysis */}
-            {activeTab === "overview" && (
-              <div className="rounded-xl border border-cyan-500/25 bg-cyan-950/20 p-3.5 space-y-2.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-cyan-300">
-                  <Sparkles size={13} className="text-cyan-400" />
-                  <span>Featherless AI Situation Assessment</span>
+            {/* Tab 2: Combined AI Advisory & Safety Directives */}
+            {activeTab === "advisory" && (
+              <div className="space-y-3">
+                {/* Situation Overview */}
+                <div className="rounded-xl border border-cyan-500/25 bg-cyan-950/20 p-3.5 space-y-2">
+                  <div className="flex items-center gap-1.5 text-[11.5px] font-semibold text-cyan-300">
+                    <Sparkles size={13} className="text-cyan-400" />
+                    <span>Situation Summary</span>
+                  </div>
+                  <p className="text-[12px] leading-relaxed text-slate-300">
+                    {selectedArea?.ai_summary || "Analyzing spatial and hydrological conditions for this area..."}
+                  </p>
                 </div>
-                <p className="text-[12px] leading-relaxed text-slate-300">
-                  {selectedArea?.ai_summary || "Analyzing spatial and hydrological features..."}
-                </p>
 
-                {/* Key Driver Highlights */}
+                {/* Tactical Safety Directives */}
+                {selectedArea?.recommendations && selectedArea.recommendations.length > 0 && (
+                  <div className="rounded-xl border border-white/10 bg-slate-800/60 p-3.5 space-y-2.5">
+                    <div className="flex items-center gap-1.5 text-[11.5px] font-semibold text-amber-400">
+                      <ShieldAlert size={13} />
+                      <span>Recommended Actions</span>
+                    </div>
+                    <div className="space-y-2">
+                      {selectedArea.recommendations.map((rec, i) => (
+                        <div key={i} className="flex items-start gap-2 text-[11.5px] text-slate-300">
+                          <span className="grid h-4 w-4 shrink-0 place-items-center rounded bg-amber-500/20 text-[10px] font-bold text-amber-300">
+                            {i + 1}
+                          </span>
+                          <p className="leading-snug">{rec}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 3: Simple & Understandable Environmental Factors */}
+            {activeTab === "factors" && (
+              <div className="rounded-xl border border-white/10 bg-slate-800/60 p-3.5 space-y-3 text-[11px]">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-white">Local Terrain & Rainfall Factors</span>
+                  <span className="text-[10px] text-slate-400">Real DEM Raster Data</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-slate-300 pt-1">
+                  <div className="rounded-lg bg-white/5 p-2 space-y-0.5">
+                    <div className="text-[10px] text-slate-400">Terrain Elevation</div>
+                    <div className="text-[13px] font-bold text-white font-mono">
+                      {selectedArea?.features_13?.elevation !== undefined ? `${selectedArea.features_13.elevation} m` : "—"}
+                    </div>
+                    <div className="text-[9.5px] text-slate-400">Above sea level</div>
+                  </div>
+
+                  <div className="rounded-lg bg-white/5 p-2 space-y-0.5">
+                    <div className="text-[10px] text-slate-400">Drainage Slope</div>
+                    <div className="text-[13px] font-bold text-white font-mono">
+                      {selectedArea?.features_13?.slope !== undefined ? `${selectedArea.features_13.slope.toFixed(1)}°` : "—"}
+                    </div>
+                    <div className="text-[9.5px] text-slate-400">Flat ground ponds easily</div>
+                  </div>
+
+                  <div className="rounded-lg bg-white/5 p-2 space-y-0.5">
+                    <div className="text-[10px] text-slate-400">Waterway Proximity</div>
+                    <div className="text-[13px] font-bold text-white font-mono">
+                      {selectedArea?.features_13?.dist_to_stream !== undefined ? `${Math.round(selectedArea.features_13.dist_to_stream)} m` : "—"}
+                    </div>
+                    <div className="text-[9.5px] text-slate-400">Distance to major nala/lake</div>
+                  </div>
+
+                  <div className="rounded-lg bg-white/5 p-2 space-y-0.5">
+                    <div className="text-[10px] text-slate-400">Rainfall Scenario</div>
+                    <div className="text-[13px] font-bold text-cyan-300 font-mono">
+                      {rainfall} mm
+                    </div>
+                    <div className="text-[9.5px] text-slate-400">Simulated accumulation</div>
+                  </div>
+                </div>
+
+                {/* Simple Driver Highlights */}
                 {selectedArea?.drivers && selectedArea.drivers.length > 0 && (
-                  <div className="space-y-1.5 pt-2 border-t border-cyan-500/20">
-                    <span className="text-[10.5px] uppercase font-bold text-slate-400">
-                      Primary Risk Drivers:
+                  <div className="space-y-1.5 pt-2 border-t border-white/10">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">
+                      Why is this area at risk?
                     </span>
                     {selectedArea.drivers.map((drv, idx) => (
                       <div key={idx} className="flex items-start gap-1.5 text-[11px]">
@@ -588,83 +638,17 @@ export default function DesktopDashboard() {
                     ))}
                   </div>
                 )}
-                <div className="text-[10px] text-cyan-400/80 font-mono pt-1">
-                  Source: {selectedArea?.ai_source || "Featherless Orchestrator"}
-                </div>
-              </div>
-            )}
-
-            {/* Tab 3: Tactical Directives */}
-            {activeTab === "tactics" && (
-              <div className="rounded-xl border border-white/10 bg-slate-800/60 p-3.5 space-y-2.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400">
-                  <ShieldAlert size={13} />
-                  <span>Tactical Emergency Directives</span>
-                </div>
-                <div className="space-y-2">
-                  {selectedArea?.recommendations?.map((rec, i) => (
-                    <div key={i} className="flex items-start gap-2 text-[11.5px] text-slate-300">
-                      <span className="grid h-4 w-4 shrink-0 place-items-center rounded bg-amber-500/20 text-[10px] font-bold text-amber-300">
-                        {i + 1}
-                      </span>
-                      <p className="leading-snug">{rec}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tab 4: Exact 13 Features Breakdown */}
-            {activeTab === "features" && (
-              <div className="rounded-xl border border-white/10 bg-slate-800/60 p-3 space-y-2 text-[11px]">
-                <span className="font-semibold text-white">13 Model Input Parameters</span>
-                <div className="grid grid-cols-2 gap-2 text-slate-300 font-mono pt-1">
-                  <div className="rounded bg-white/5 p-1.5">
-                    <div className="text-[10px] text-slate-400">Elevation (DEM)</div>
-                    <div className="font-bold text-white">{selectedArea?.features_13?.elevation} m</div>
-                  </div>
-                  <div className="rounded bg-white/5 p-1.5">
-                    <div className="text-[10px] text-slate-400">Slope</div>
-                    <div className="font-bold text-white">{selectedArea?.features_13?.slope}°</div>
-                  </div>
-                  <div className="rounded bg-white/5 p-1.5">
-                    <div className="text-[10px] text-slate-400">Wetness (TWI)</div>
-                    <div className="font-bold text-white">{selectedArea?.features_13?.twi}</div>
-                  </div>
-                  <div className="rounded bg-white/5 p-1.5">
-                    <div className="text-[10px] text-slate-400">Dist to Stream</div>
-                    <div className="font-bold text-white">{selectedArea?.features_13?.dist_to_stream} m</div>
-                  </div>
-                  <div className="rounded bg-white/5 p-1.5">
-                    <div className="text-[10px] text-slate-400">Total Rainfall</div>
-                    <div className="font-bold text-cyan-300">{selectedArea?.features_13?.total_rainfall_mm} mm</div>
-                  </div>
-                  <div className="rounded bg-white/5 p-1.5">
-                    <div className="text-[10px] text-slate-400">Max Hourly</div>
-                    <div className="font-bold text-cyan-300">{selectedArea?.features_13?.max_hourly_mm} mm/h</div>
-                  </div>
-                  <div className="rounded bg-white/5 p-1.5">
-                    <div className="text-[10px] text-slate-400">Antecedent Index (API)</div>
-                    <div className="font-bold text-white">{selectedArea?.features_13?.max_api}</div>
-                  </div>
-                  <div className="rounded bg-white/5 p-1.5">
-                    <div className="text-[10px] text-slate-400">Flow Acc (log)</div>
-                    <div className="font-bold text-white">{selectedArea?.features_13?.flow_acc_log}</div>
-                  </div>
-                </div>
               </div>
             )}
           </div>
 
-          {/* Model Specification Card Footer */}
-          <div className="rounded-xl border border-white/[0.08] bg-slate-950/60 p-2.5 text-[10.5px] text-slate-400 space-y-1">
-            <div className="flex items-center gap-1 font-medium text-slate-300">
-              <CheckCircle2 size={12} className="text-emerald-400" />
-              <span>Artifact: lgb_flood_model.txt</span>
+          {/* Simple Engine Footer */}
+          <div className="rounded-xl border border-white/[0.08] bg-slate-950/60 p-2.5 text-[11px] text-slate-400 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 font-medium text-slate-300">
+              <CheckCircle2 size={13} className="text-emerald-400" />
+              <span>LightGBM Hydrological Model</span>
             </div>
-            <p className="text-[10px] text-slate-400">
-              Authoritative 13-feature LightGBM model with dynamic road-level inundation mapping.
-            </p>
+            <span className="text-[10px] text-cyan-400 font-mono">Live Simulation</span>
           </div>
         </aside>
 
@@ -679,7 +663,6 @@ export default function DesktopDashboard() {
               setActiveTab("roads");
             }}
             onMapClick={handleMapClick}
-            showReferenceRaster={showReferenceRaster}
             rainfall={rainfall}
             isLoading={isLoading}
           />

@@ -13,11 +13,6 @@ const RISK_COLORS = {
   "Critical": "#dc2626",
 };
 
-const SUSCEPTIBILITY_BOUNDS = [
-  [16.99930555555556, 77.99986111111112],
-  [18.00013888888889, 79.00069444444445],
-];
-
 const DEFAULT_EVACUATION_ROUTE = [
   [17.4447, 78.4664],
   [17.4401, 78.4500],
@@ -33,7 +28,6 @@ export default function MapCanvasInner({
   center = null,
   zoom = 13.5,
   onMapClick = null,
-  showReferenceRaster = false,
   showEvacuation = false,
   rainfall = 65,
   isLoading = false,
@@ -46,7 +40,6 @@ export default function MapCanvasInner({
   const roadLayersRef = useRef([]);
   const zoneLayersRef = useRef([]);
   const evacuationLayerRef = useRef(null);
-  const rasterLayerRef = useRef(null);
   const clickCallbackRef = useRef(onMapClick);
   const onRoadSelectRef = useRef(onRoadSelect);
 
@@ -178,26 +171,7 @@ export default function MapCanvasInner({
     }
   }, [showEvacuation]);
 
-  // 3. Handle Reference Raster Overlay toggle
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
-
-    if (showReferenceRaster) {
-      if (!rasterLayerRef.current) {
-        rasterLayerRef.current = L.imageOverlay("/flood_overlay.png", SUSCEPTIBILITY_BOUNDS, {
-          opacity: 0.45,
-          zIndex: 4,
-        }).addTo(mapInstanceRef.current);
-      }
-    } else {
-      if (rasterLayerRef.current) {
-        rasterLayerRef.current.remove();
-        rasterLayerRef.current = null;
-      }
-    }
-  }, [showReferenceRaster]);
-
-  // 4. Render Road Inundation Polylines & Vicinity Micro-Zones
+  // 3. Render Road Inundation Polylines & Vicinity Micro-Zones
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
