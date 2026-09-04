@@ -1,6 +1,6 @@
 "use client";
 
-import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, Tooltip } from "react-leaflet";
+import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, Tooltip, ImageOverlay } from "react-leaflet";
 import { CENTER, floodZone, severeZone, evacuationRoute, mapMarkers } from "../data/floodData.js";
 
 const markerColors = {
@@ -9,6 +9,12 @@ const markerColors = {
   police: "#4d8bf5",
   critical: "#e2483d",
 };
+
+// Spatial bounding box of Hyderabad flood susceptibility raster derived from real DEM
+const SUSCEPTIBILITY_BOUNDS = [
+  [16.99930555555556, 77.99986111111112],
+  [18.00013888888889, 79.00069444444445],
+];
 
 function MarkerDot({ marker, dark }) {
   return (
@@ -33,6 +39,8 @@ export default function MapCanvasInner({
   variant = "light", // "light" | "dark"
   showMarkers = false,
   showEvacuation = false,
+  showOverlay = true,
+  overlayOpacity = 0.65,
   zoom = 14,
   className = "",
   interactive = true,
@@ -56,6 +64,16 @@ export default function MapCanvasInner({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
+        {/* Real LightGBM AI Flood Susceptibility Overlay Raster */}
+        {showOverlay && (
+          <ImageOverlay
+            url="/flood_overlay.png"
+            bounds={SUSCEPTIBILITY_BOUNDS}
+            opacity={overlayOpacity}
+            zIndex={5}
+          />
+        )}
+
         {/* Moderate risk outer zone */}
         <Polygon
           positions={floodZone}
@@ -63,7 +81,7 @@ export default function MapCanvasInner({
             color: "#e2483d",
             weight: 1.5,
             fillColor: "#e2483d",
-            fillOpacity: dark ? 0.28 : 0.32,
+            fillOpacity: dark ? 0.22 : 0.26,
           }}
         />
 
@@ -74,7 +92,7 @@ export default function MapCanvasInner({
             color: "#a3172e",
             weight: 1.5,
             fillColor: "#a3172e",
-            fillOpacity: dark ? 0.45 : 0.5,
+            fillOpacity: dark ? 0.38 : 0.42,
           }}
         />
 

@@ -10,6 +10,36 @@ export async function fetchHealth() {
   }
 }
 
+export async function fetchModelStatus() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/model/status`);
+    if (!res.ok) throw new Error(`Model status failed (${res.status})`);
+    return await res.json();
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function fetchHazardMapMetadata() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/hazard-map/metadata`);
+    if (!res.ok) throw new Error(`Hazard map metadata failed (${res.status})`);
+    return await res.json();
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function fetchRainfallTimeseries() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/rainfall/timeseries`);
+    if (!res.ok) throw new Error(`Rainfall timeseries failed (${res.status})`);
+    return await res.json();
+  } catch (err) {
+    return null;
+  }
+}
+
 export async function predictFlood(params) {
   try {
     const res = await fetch(`${API_BASE_URL}/predict`, {
@@ -38,7 +68,7 @@ export async function evaluateHazard(params) {
   }
 }
 
-export async function fetchFfsSnapshot(latitude = 17.4948, longitude = 78.681) {
+export async function fetchFfsSnapshot(latitude = 17.4065, longitude = 78.4772) {
   try {
     const res = await fetch(`${API_BASE_URL}/ffs/snapshot?latitude=${latitude}&longitude=${longitude}`);
     if (!res.ok) throw new Error(`FFS snapshot failed (${res.status})`);

@@ -8,6 +8,7 @@ export default function AlertHUD({
   onEvacuationClick,
   riskOverride,
   statsOverride,
+  predictionOverride,
 }) {
   const activeStats = statsOverride || dashboardStats;
   const activeRiskData = riskOverride || currentRisk;
@@ -16,6 +17,34 @@ export default function AlertHUD({
   if (variant === "stats") {
     return (
       <div className="space-y-3.5 rounded-xl border border-white/[0.06] bg-ink-700/60 p-4" aria-label="Alert HUD Stats">
+        {predictionOverride && (
+          <div className="mb-2 border-b border-white/[0.08] pb-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] text-slate-400">Susceptibility Tier</span>
+              <span
+                className={`rounded px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase ${
+                  predictionOverride.risk_level === "CRITICAL"
+                    ? "border border-red-500/30 bg-red-500/20 text-red-400"
+                    : predictionOverride.risk_level === "HIGH"
+                    ? "border border-amber-500/30 bg-amber-500/20 text-amber-400"
+                    : predictionOverride.risk_level === "MODERATE"
+                    ? "border border-yellow-500/30 bg-yellow-500/20 text-yellow-300"
+                    : "border border-emerald-500/30 bg-emerald-500/20 text-emerald-400"
+                }`}
+              >
+                {predictionOverride.risk_level || "LOW"}
+              </span>
+            </div>
+            <div className="mt-1.5 flex items-baseline justify-between">
+              <span className="text-[12px] text-slate-400">AI Susceptibility Score</span>
+              <span className="font-mono text-lg font-bold text-white">
+                {typeof predictionOverride.susceptibility === "number"
+                  ? `${(predictionOverride.susceptibility * 100).toFixed(1)}%`
+                  : "--"}
+              </span>
+            </div>
+          </div>
+        )}
         <div>
           <p className="text-[12.5px] text-slate-400">Predicted Affected Area</p>
           <p className="mt-0.5 font-mono text-xl font-bold text-brand-400">{activeStats.affectedArea}</p>

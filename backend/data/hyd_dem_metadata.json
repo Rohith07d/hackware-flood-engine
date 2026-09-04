@@ -1,0 +1,28 @@
+{
+  "source_file": "hyd_dem-LAPTOP-13JE1D7C.tif",
+  "shape": [
+    3601,
+    3601
+  ],
+  "dtype": "int16",
+  "nodata": -32767,
+  "crs": "EPSG:4326",
+  "bounds": {
+    "left": 77.99986111111112,
+    "bottom": 16.999861111111112,
+    "right": 79.0001388888889,
+    "top": 18.00013888888889
+  },
+  "transform": [
+    0.0002777777777777778,
+    0.0,
+    77.99986111111112,
+    0.0,
+    -0.0002777777777777778,
+    18.00013888888889
+  ],
+  "min_valid_elevation": 268,
+  "max_valid_elevation": 716,
+  "mean_valid_elevation": 536.0505329561869,
+  "notes": "Numerical DEM array extracted from the valid uploaded GeoTIFF. Use the JSON alongside the NPY to preserve geospatial metadata."
+}

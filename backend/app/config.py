@@ -10,7 +10,7 @@ load_dotenv(dotenv_path=env_path)
 class Settings:
     # App Settings
     app_name: str = os.getenv("APP_NAME", "HackWave Flood Engine API")
-    app_version: str = os.getenv("APP_VERSION", "0.1.0")
+    app_version: str = os.getenv("APP_VERSION", "1.0.0")
     debug: bool = os.getenv("DEBUG", "true").lower() in ("true", "1", "yes")
     environment: str = os.getenv("ENVIRONMENT", "development")
     host: str = os.getenv("HOST", "0.0.0.0")
@@ -29,7 +29,7 @@ class Settings:
     base_dir: Path = Path(__file__).resolve().parent.parent
     model_dir: Path = base_dir / "models"
     data_dir: Path = base_dir / "data"
-    model_path: Path = base_dir / os.getenv("MODEL_PATH", "models/flood_lgbm_model.txt")
+    model_path: Path = base_dir / os.getenv("MODEL_PATH", "models/lgb_flood_model.txt")
 
 
 settings = Settings()

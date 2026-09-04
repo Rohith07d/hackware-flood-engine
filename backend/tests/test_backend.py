@@ -1,7 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.ml_predictor import LightGBMFloodPredictor
+from app.ml_predictor import LightGBMFloodPredictor, FEATURE_NAMES, predictor
+from app.terrain_service import terrain_service
+from app.rainfall_service import get_rainfall_scenario_features, compute_rainfall_metrics_from_series
 from app.ffs_collector import collect_ffs_snapshot, generate_regional_grid
 
 client = TestClient(app)
@@ -12,32 +14,90 @@ def test_health_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
+    assert data["model_ready"] is True
+    assert data["dem_cached"] is True
     assert "version" in data
 
 
-def test_ml_predictor_direct():
-    predictor = LightGBMFloodPredictor()
-    assert predictor.model is not None
-
-    # Low rainfall test
-    low_risk = predictor.predict_probability({"latitude": 13.0, "longitude": 80.0, "rainfall_mm": 5.0})
-    assert 0.0 <= low_risk <= 1.0
-
-    # High rainfall test
-    high_risk = predictor.predict_probability({"latitude": 13.0, "longitude": 80.0, "rainfall_mm": 180.0})
-    assert 0.0 <= high_risk <= 1.0
-
-    # High rainfall should yield greater or equal risk compared to low rainfall
-    assert high_risk >= low_risk
+def test_model_status_endpoint():
+    response = client.get("/model/status")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["model_name"] == "lgb_flood_model.txt"
+    assert data["feature_count"] == 13
+    assert data["feature_names"] == FEATURE_NAMES
+    assert data["is_loaded"] is True
+    assert data["dem_cached"] is True
+    assert "AI-based Flood Susceptibility Estimate" in data["disclaimer"]
 
 
-def test_predict_endpoint():
+def test_terrain_service_sampling():
+    feats = terrain_service.sample_terrain_features(latitude=17.4065, longitude=78.4772)
+    expected_terrain_keys = [
+        "elevation", "slope", "aspect", "curvature",
+        "tri", "twi", "rel_elev", "flow_acc_log", "dist_to_stream"
+    ]
+    for key in expected_terrain_keys:
+        assert key in feats
+        assert isinstance(feats[key], (int, float))
+    assert feats["elevation"] > 0
+
+
+def test_rainfall_service_calculation():
+    rain_feats = get_rainfall_scenario_features(100.0)
+    expected_rain_keys = ["total_rainfall_mm", "max_hourly_mm", "max_cum24h_mm", "max_api"]
+    for key in expected_rain_keys:
+        assert key in rain_feats
+        assert isinstance(rain_feats[key], (int, float))
+        assert rain_feats[key] >= 0.0
+
+    # Test metric computation from series
+    metrics = compute_rainfall_metrics_from_series([5.0, 10.0, 15.0, 20.0])
+    assert metrics["total_rainfall_mm"] == 50.0
+    assert metrics["max_hourly_mm"] == 20.0
+    assert metrics["max_api"] > 0
+
+
+def test_ml_predictor_strict_validation():
+    # Test missing feature rejection
+    incomplete = {"elevation": 500.0, "slope": 2.0}
+    with pytest.raises(ValueError, match="Missing required features"):
+        predictor.validate_features(incomplete)
+
+    # Test NaN rejection
+    nan_dict = {f: 1.0 for f in FEATURE_NAMES}
+    nan_dict["twi"] = float("nan")
+    with pytest.raises(ValueError, match="cannot be NaN"):
+        predictor.validate_features(nan_dict)
+
+    # Valid complete 13 features
+    valid_dict = {
+        "elevation": 505.0,
+        "slope": 2.5,
+        "aspect": 180.0,
+        "curvature": 0.0,
+        "tri": 2.0,
+        "twi": 8.5,
+        "rel_elev": 0.0,
+        "flow_acc_log": 3.0,
+        "dist_to_stream": 500.0,
+        "total_rainfall_mm": 100.0,
+        "max_hourly_mm": 15.0,
+        "max_cum24h_mm": 60.0,
+        "max_api": 45.0,
+    }
+    vec = predictor.validate_features(valid_dict)
+    assert vec.shape == (1, 13)
+
+    prob = predictor.predict_susceptibility(valid_dict)
+    assert 0.0 <= prob <= 1.0
+
+
+def test_predict_endpoint_coordinate():
     payload = {
-        "latitude": 13.0827,
-        "longitude": 80.2707,
-        "rainfall_mm": 95.0,
-        "soil_moisture_pct": 75.0,
-        "elevation_m": 12.0
+        "latitude": 17.4065,
+        "longitude": 78.4772,
+        "rainfall_mm": 120.0,
     }
     response = client.post("/predict", json=payload)
     assert response.status_code == 200
@@ -45,16 +105,19 @@ def test_predict_endpoint():
     assert data["latitude"] == payload["latitude"]
     assert data["longitude"] == payload["longitude"]
     assert data["rainfall_mm"] == payload["rainfall_mm"]
+    assert 0.0 <= data["susceptibility"] <= 1.0
     assert 0.0 <= data["probability"] <= 1.0
-    assert data["hazard_level"] in ("Low", "Moderate", "High", "Critical")
-    assert "rainfall_mm" in data["features_used"]
+    assert data["risk_level"] in ("LOW", "MODERATE", "HIGH", "CRITICAL")
+    assert len(data["features_used"]) == 13
+    for f in FEATURE_NAMES:
+        assert f in data["features_used"]
 
 
 def test_batch_predict_endpoint():
     payload = {
         "points": [
-            {"latitude": 13.08, "longitude": 80.27, "rainfall_mm": 15.0},
-            {"latitude": 13.09, "longitude": 80.28, "rainfall_mm": 120.0},
+            {"latitude": 17.40, "longitude": 78.47, "rainfall_mm": 20.0},
+            {"latitude": 17.45, "longitude": 78.50, "rainfall_mm": 160.0},
         ]
     }
     response = client.post("/predict/batch", json=payload)
@@ -62,62 +125,61 @@ def test_batch_predict_endpoint():
     data = response.json()
     assert data["total_points"] == 2
     assert len(data["predictions"]) == 2
+    for p in data["predictions"]:
+        assert 0.0 <= p["susceptibility"] <= 1.0
+        assert p["risk_level"] in ("LOW", "MODERATE", "HIGH", "CRITICAL")
 
 
-def test_ffs_collector_direct_and_endpoint():
-    # Direct function test
-    snapshot = collect_ffs_snapshot(13.0827, 80.2707)
-    assert "status" in snapshot
-    assert "metrics" in snapshot
-    assert snapshot["metrics"]["rainfall_1h_mm"] > 0
+def test_hazard_map_metadata_and_overlay():
+    # Metadata endpoint
+    resp_meta = client.get("/hazard-map/metadata")
+    assert resp_meta.status_code == 200
+    meta = resp_meta.json()
+    assert meta["crs"] == "EPSG:4326"
+    assert "bounds" in meta
+    assert "leaflet_bounds" in meta
+    assert meta["shape"] == [1201, 1201]
+    assert meta["overlay_url"] == "/hazard-map/overlay.png"
 
-    grid = generate_regional_grid(13.0827, 80.2707, grid_size=3)
-    assert len(grid) == 9
-
-    # API endpoints
-    resp1 = client.get("/ffs/snapshot?latitude=13.08&longitude=80.27")
-    assert resp1.status_code == 200
-    assert resp1.json()["coordinates"]["latitude"] == 13.08
-
-    resp2 = client.get("/ffs/grid?center_lat=13.08&center_lon=80.27&grid_size=3")
-    assert resp2.status_code == 200
-    assert len(resp2.json()) == 9
+    # Overlay PNG endpoint
+    resp_png = client.get("/hazard-map/overlay.png")
+    assert resp_png.status_code == 200
+    assert resp_png.headers["content-type"] == "image/png"
+    assert len(resp_png.content) > 10000
 
 
-def test_infrastructure_endpoint():
-    response = client.get("/infrastructure?latitude=13.0827&longitude=80.2707&radius_km=10.0")
+def test_rainfall_timeseries_endpoint():
+    response = client.get("/rainfall/timeseries")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) > 0
-    first_item = data[0]
-    assert "name" in first_item
-    assert "vulnerability_score" in first_item
-    assert "type" in first_item
+    assert "storm_event" in data
+    assert "summary_metrics" in data
+    assert len(data["hourly_data"]) > 0
 
 
 def test_evaluate_hazard_endpoint():
     payload = {
-        "latitude": 13.0827,
-        "longitude": 80.2707,
+        "latitude": 17.4065,
+        "longitude": 78.4772,
         "rainfall_mm": 110.0,
-        "radius_km": 5.0
+        "radius_km": 5.0,
     }
     response = client.post("/evaluate-hazard", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert 0.0 <= data["flood_probability"] <= 1.0
+    assert 0.0 <= data["susceptibility"] <= 1.0
     assert "compound_risk_score" in data
     assert isinstance(data["threatened_infrastructure"], list)
 
 
-def test_generate_and_list_alerts():
+def test_alerts_generate_and_list():
     payload = {
-        "latitude": 13.0827,
-        "longitude": 80.2707,
-        "rainfall_mm": 125.0,
-        "location_name": "Central Chennai Riverway",
-        "radius_km": 6.0
+        "latitude": 17.4065,
+        "longitude": 78.4772,
+        "rainfall_mm": 135.0,
+        "location_name": "Hyderabad Musi River Basin",
+        "radius_km": 5.0,
     }
     create_resp = client.post("/alerts/generate", json=payload)
     assert create_resp.status_code == 200

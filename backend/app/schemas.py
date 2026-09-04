@@ -13,26 +13,47 @@ class HealthResponse(BaseModel):
     model_ready: bool = False
     supabase_configured: bool = False
     llm_configured: bool = False
+    dem_cached: bool = False
     timestamp: datetime = Field(default_factory=get_utc_now)
+
+
+class ModelStatusResponse(BaseModel):
+    model_name: str
+    feature_count: int
+    feature_names: List[str]
+    is_loaded: bool
+    dem_cached: bool
+    disclaimer: str
 
 
 class FloodPredictionRequest(BaseModel):
     latitude: float = Field(..., ge=-90.0, le=90.0, description="Latitude in decimal degrees")
     longitude: float = Field(..., ge=-180.0, le=180.0, description="Longitude in decimal degrees")
-    rainfall_mm: float = Field(..., ge=0.0, description="Precipitation accumulation in mm")
-    elevation_m: Optional[float] = Field(None, description="Terrain elevation in meters above sea level")
-    slope_deg: Optional[float] = Field(None, ge=0.0, le=90.0, description="Terrain slope angle in degrees")
-    soil_moisture_pct: Optional[float] = Field(None, ge=0.0, le=100.0, description="Soil saturation percentage")
-    distance_to_river_m: Optional[float] = Field(None, ge=0.0, description="Distance to nearest watercourse in meters")
-    drainage_capacity_mm_hr: Optional[float] = Field(None, ge=0.0, description="Urban stormwater drainage capacity")
+    rainfall_mm: float = Field(..., ge=0.0, description="Scenario rainfall accumulation in mm")
+    # Optional direct feature overrides
+    elevation: Optional[float] = None
+    slope: Optional[float] = None
+    aspect: Optional[float] = None
+    curvature: Optional[float] = None
+    tri: Optional[float] = None
+    twi: Optional[float] = None
+    rel_elev: Optional[float] = None
+    flow_acc_log: Optional[float] = None
+    dist_to_stream: Optional[float] = None
+    total_rainfall_mm: Optional[float] = None
+    max_hourly_mm: Optional[float] = None
+    max_cum24h_mm: Optional[float] = None
+    max_api: Optional[float] = None
 
 
 class FloodPredictionResponse(BaseModel):
     latitude: float
     longitude: float
     rainfall_mm: float
-    probability: float = Field(..., ge=0.0, le=1.0, description="Estimated probability of flooding [0.0 - 1.0]")
-    hazard_level: str = Field(..., description="Categorical hazard level: Low, Moderate, High, or Critical")
+    susceptibility: float = Field(..., ge=0.0, le=1.0, description="AI-based flood susceptibility estimate [0.0 - 1.0]")
+    probability: float = Field(..., ge=0.0, le=1.0, description="Alias for susceptibility probability")
+    risk_level: str = Field(..., description="Categorical risk tier: LOW, MODERATE, HIGH, or CRITICAL")
+    hazard_level: str = Field(..., description="Categorical hazard level: LOW, MODERATE, HIGH, or CRITICAL")
     features_used: Dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=get_utc_now)
 
@@ -50,7 +71,7 @@ class BatchPredictionResponse(BaseModel):
 class InfrastructureItem(BaseModel):
     id: str
     name: str
-    type: str  # Hospital, School, Bridge, Substation, Water Treatment, Shelter
+    type: str  # Hospital, School, Bridge, Power Substation, Water Treatment, Emergency Shelter
     latitude: float
     longitude: float
     vulnerability_score: float = Field(..., ge=0.0, le=1.0)
@@ -71,7 +92,9 @@ class HazardEvaluationResponse(BaseModel):
     longitude: float
     rainfall_mm: float
     flood_probability: float
+    susceptibility: float
     hazard_level: str
+    risk_level: str
     compound_risk_score: float
     threatened_infrastructure: List[InfrastructureItem]
     timestamp: datetime = Field(default_factory=get_utc_now)
@@ -96,3 +119,12 @@ class AlertGenerationResponse(BaseModel):
     threatened_infrastructure: List[InfrastructureItem]
     flood_probability: float
     generated_at: datetime = Field(default_factory=get_utc_now)
+
+
+class HazardMapMetadataResponse(BaseModel):
+    crs: str
+    bounds: Dict[str, float]
+    leaflet_bounds: List[List[float]]
+    shape: List[int]
+    overlay_url: str
+    disclaimer: str
