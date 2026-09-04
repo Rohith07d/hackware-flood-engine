@@ -101,3 +101,18 @@ export async function generateEmergencyAlert(params) {
     return null;
   }
 }
+
+export async function analyzeArea(location) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/analyze-area`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ location }),
+    });
+    if (!res.ok) throw new Error(`Area analysis failed (${res.status})`);
+    return await res.json();
+  } catch (err) {
+    return null;
+  }
+}
+

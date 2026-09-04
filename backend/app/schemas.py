@@ -121,6 +121,22 @@ class AlertGenerationResponse(BaseModel):
     generated_at: datetime = Field(default_factory=get_utc_now)
 
 
+class AnalyzeAreaRequest(BaseModel):
+    location: str = Field(..., description="Name of the area to analyze (e.g. 'Gachibowli, Hyderabad')")
+
+
+class AnalyzeAreaResponse(BaseModel):
+    location: str
+    latitude: float
+    longitude: float
+    susceptibility_score: float
+    risk_level: str
+    features_used: Dict[str, Any]
+    ai_explanation: str
+    timestamp: datetime = Field(default_factory=get_utc_now)
+    model_version: str
+
+
 class HazardMapMetadataResponse(BaseModel):
     crs: str
     bounds: Dict[str, float]

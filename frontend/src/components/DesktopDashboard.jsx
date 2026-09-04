@@ -1,28 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, ChevronDown, Gauge, Building2, Shield, HeartPulse, User, Layers, Info, CheckCircle2 } from "lucide-react";
+import { Search, MapPin, Gauge, Activity, FileText, CheckCircle2 } from "lucide-react";
 import Logo from "./Logo.jsx";
 import MapCanvas from "./MapCanvas.jsx";
-import Sparkline from "./Sparkline.jsx";
-import RainfallSlider from "./RainfallSlider.jsx";
-import AlertHUD from "./AlertHUD.jsx";
-import { predictionDrivers, dashboardStats } from "../data/floodData.js";
-import { predictFlood, fetchHealth, fetchModelStatus } from "../lib/api.js";
-
-const legendItems = [
-  { type: "gauge", label: "River gauge", icon: Gauge, color: "#f5b942" },
-  { type: "infrastructure", label: "River infrastructure", icon: Building2, color: "#2dd4bf" },
-  { type: "police", label: "Police stations", icon: Shield, color: "#4d8bf5" },
-  { type: "critical", label: "Critical infrastructure", icon: HeartPulse, color: "#e2483d" },
-];
+import { analyzeArea, fetchHealth, fetchModelStatus } from "../lib/api.js";
 
 export default function DesktopDashboard() {
-  const [horizon, setHorizon] = useState(62);
   const [backendOnline, setBackendOnline] = useState(false);
-  const [livePrediction, setLivePrediction] = useState(null);
   const [modelInfo, setModelInfo] = useState(null);
-  const [showOverlay, setShowOverlay] = useState(true);
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
 
   // Check backend health & model status on mount
   useEffect(() => {
@@ -39,32 +30,27 @@ export default function DesktopDashboard() {
     });
   }, []);
 
-  // Fetch live prediction when rainfall slider changes (debounced)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      predictFlood({
-        latitude: 17.4065,
-        longitude: 78.4772,
-        rainfall_mm: horizon,
-      }).then((pred) => {
-        if (pred) {
-          setLivePrediction(pred);
-          setBackendOnline(true);
-        }
-      });
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [horizon]);
-
-  // Derived stats combining baseline and live LightGBM predictions
-  const stats = livePrediction
-    ? {
-        affectedArea: `${(horizon * 0.08).toFixed(1)} km²`,
-        maxDepth: `${(horizon * 0.035).toFixed(1)} m`,
-        highRiskStreets: Math.max(2, Math.round(horizon * 0.45)),
-        confidence: `${Math.round(livePrediction.susceptibility * 100)}%`,
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    
+    setIsAnalyzing(true);
+    setErrorMsg("");
+    setAnalysisResult(null);
+    
+    try {
+      const res = await analyzeArea(searchQuery);
+      if (res && res.location) {
+        setAnalysisResult(res);
+      } else {
+        setErrorMsg("Analysis failed. Please check the backend or your query.");
       }
-    : dashboardStats;
+    } catch (err) {
+      setErrorMsg(err.message || "An error occurred during analysis.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-ink-900 text-slate-200">
@@ -75,149 +61,144 @@ export default function DesktopDashboard() {
           {backendOnline ? (
             <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Live LightGBM AI (13 Features)
+              Hybrid AI / Featherless Linked
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] text-slate-400">
-              Local Standalone Mode
+            <span className="flex items-center gap-1.5 rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-0.5 text-[11px] text-rose-400">
+              Backend Offline
             </span>
           )}
         </div>
-        <div className="flex items-center gap-4">
+        <form onSubmit={handleSearch} className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              placeholder="e.g. Gachibowli, Hyderabad"
+              className="w-80 rounded-full border border-white/[0.1] bg-ink-800 py-1.5 pl-9 pr-4 text-[13px] text-white placeholder-slate-500 focus:border-brand-500 focus:outline-none"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={isAnalyzing}
+            />
+          </div>
           <button
-            onClick={() => setShowOverlay(!showOverlay)}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition ${
-              showOverlay
-                ? "bg-brand-600/30 text-brand-300 border border-brand-500/40"
-                : "bg-white/5 text-slate-400 hover:bg-white/10"
-            }`}
-            title="Toggle LightGBM raster susceptibility heatmap layer"
+            type="submit"
+            disabled={isAnalyzing || !searchQuery.trim()}
+            className="rounded-full bg-brand-600 px-4 py-1.5 text-[13px] font-medium text-white transition hover:bg-brand-500 disabled:opacity-50"
           >
-            <Layers size={14} />
-            <span>AI Susceptibility Map: {showOverlay ? "ON" : "OFF"}</span>
+            {isAnalyzing ? "Analyzing..." : "Analyze Area"}
           </button>
-          <button className="relative grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-white/5 hover:text-slate-200">
-            <Bell size={16} />
-            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-risk-high" />
-          </button>
-          <button className="flex items-center gap-1.5 rounded-lg py-1 pl-1 pr-2 text-slate-300 transition hover:bg-white/5">
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-600 text-white">
-              <User size={13} />
-            </span>
-            <ChevronDown size={14} />
-          </button>
-        </div>
+        </form>
       </header>
 
       {/* Body: sidebar + map */}
       <div className="relative flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className="thin-scroll w-80 shrink-0 overflow-y-auto border-r border-white/[0.06] bg-ink-800 px-4 py-4 space-y-5">
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              AI Flood Susceptibility
-            </p>
-            <AlertHUD variant="stats" statsOverride={stats} predictionOverride={livePrediction} />
-          </div>
+        <aside className="thin-scroll w-[420px] shrink-0 overflow-y-auto border-r border-white/[0.06] bg-ink-800 px-4 py-4 space-y-5">
+          {errorMsg && (
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-4 text-[13px] text-rose-400">
+              {errorMsg}
+            </div>
+          )}
 
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Prediction Drivers (Hydrology & Terrain)
-            </p>
-            <div className="space-y-4 rounded-xl border border-white/[0.06] bg-ink-700/60 p-4">
-              {predictionDrivers.map((d) => (
-                <div key={d.label}>
-                  <div className="mb-1.5 flex items-baseline justify-between">
-                    <span className="text-[12.5px] text-slate-400">{d.label}</span>
-                    {d.value !== null && (
-                      <span className="font-mono text-[12.5px] font-semibold text-white">
-                        {d.value}
-                        {d.unit}
-                      </span>
-                    )}
-                  </div>
-                  <Sparkline bars={d.bars} color="#33b8cf" />
+          {!analysisResult && !isAnalyzing && !errorMsg && (
+            <div className="flex h-64 flex-col items-center justify-center text-center text-slate-500">
+              <MapPin size={32} className="mb-3 opacity-50" />
+              <p className="text-[13px] font-medium">No Area Selected</p>
+              <p className="mt-1 max-w-[250px] text-[12px]">Search for a location to analyze real-time flood susceptibility using LightGBM and Featherless AI.</p>
+            </div>
+          )}
+
+          {isAnalyzing && (
+            <div className="flex h-64 flex-col items-center justify-center text-center text-brand-400">
+              <div className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-brand-400 border-t-transparent" />
+              <p className="text-[13px] font-medium">Extracting Terrain & Rainfall...</p>
+              <p className="mt-1 text-[11px] text-slate-500">Orchestrating via Featherless Agent</p>
+            </div>
+          )}
+
+          {analysisResult && (
+            <div className="space-y-5 animate-in fade-in">
+              <div className="rounded-xl border border-white/[0.06] bg-ink-700/60 p-4">
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Location</p>
+                <h2 className="text-lg font-bold text-white leading-tight">{analysisResult.location}</h2>
+                <div className="mt-2 flex gap-4 text-[12px] text-slate-400">
+                  <span>Lat: {analysisResult.latitude.toFixed(4)}</span>
+                  <span>Lon: {analysisResult.longitude.toFixed(4)}</span>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* Model Pipeline Spec */}
-          <div className="rounded-xl border border-white/[0.06] bg-ink-700/40 p-3.5 text-[11px] text-slate-400 space-y-1.5">
-            <div className="flex items-center gap-1.5 font-medium text-slate-300">
-              <CheckCircle2 size={13} className="text-emerald-400" />
-              <span>Model: {modelInfo?.model_name || "lgb_flood_model.txt"}</span>
+              <div className="flex gap-4">
+                <div className="flex-1 rounded-xl border border-white/[0.06] bg-ink-700/60 p-4">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Susceptibility</p>
+                  <div className="flex items-end gap-1">
+                    <span className="text-3xl font-bold text-white">{(analysisResult.susceptibility_score * 100).toFixed(1)}%</span>
+                  </div>
+                </div>
+                <div className="flex-1 rounded-xl border border-white/[0.06] bg-ink-700/60 p-4">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Risk Tier</p>
+                  <div className={`text-xl font-bold ${
+                    analysisResult.risk_level === 'CRITICAL' ? 'text-rose-500' :
+                    analysisResult.risk_level === 'HIGH' ? 'text-amber-500' :
+                    analysisResult.risk_level === 'MODERATE' ? 'text-yellow-400' : 'text-emerald-400'
+                  }`}>
+                    {analysisResult.risk_level}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/[0.06] bg-ink-700/60 p-4">
+                <p className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <FileText size={13} /> AI Advisory (Featherless)
+                </p>
+                <div className="prose prose-invert prose-sm max-w-none text-[13px] leading-relaxed text-slate-300">
+                  {/* Super simple markdown render since it's just raw text */}
+                  {analysisResult.ai_explanation.split('\n').map((line, i) => (
+                    <p key={i} className="mb-2">{line.replace(/[#*`]/g, '')}</p>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Model Features ({Object.keys(analysisResult.features_used).length})
+                </p>
+                <div className="space-y-1 rounded-xl border border-white/[0.06] bg-ink-700/40 p-3">
+                  {Object.entries(analysisResult.features_used).map(([k, v]) => (
+                    <div key={k} className="flex justify-between text-[12px]">
+                      <span className="text-slate-400">{k}</span>
+                      <span className="font-mono font-medium text-slate-200">{typeof v === 'number' ? v.toFixed(2) : v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/[0.06] bg-ink-700/40 p-3.5 text-[11px] text-slate-400 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-medium text-slate-300">
+                  <CheckCircle2 size={13} className="text-emerald-400" />
+                  <span>Engine: {analysisResult.model_version}</span>
+                </div>
+                <p>Saved to Supabase successfully.</p>
+              </div>
             </div>
-            <p>13 calibrated features: 9 physical DEM terrain + 4 hydrological storm parameters.</p>
-            <div className="pt-2 border-t border-white/[0.06] flex items-start gap-1.5 text-slate-500">
-              <Info size={13} className="shrink-0 mt-0.5" />
-              <span>AI-based Flood Susceptibility Estimate (Experimental Prototype). Relative spatial probability, not an official flood warning.</span>
-            </div>
-          </div>
+          )}
         </aside>
 
         {/* Map */}
         <div className="relative flex-1">
           <MapCanvas
             variant="dark"
-            showMarkers
-            zoom={13.5}
-            showOverlay={showOverlay}
-            overlayOpacity={0.7}
+            showMarkers={false}
+            zoom={analysisResult ? 15 : 12}
+            showOverlay={false}
+            showEvacuation={false}
+            horizon={0}
+            center={analysisResult ? [analysisResult.latitude, analysisResult.longitude] : undefined}
+            marker={analysisResult ? { lat: analysisResult.latitude, lng: analysisResult.longitude, label: analysisResult.location } : null}
           />
-
-          {/* Legend overlay */}
-          <div className="absolute left-4 top-4 z-[400] w-56 rounded-lg border border-white/[0.08] bg-ink-800/90 p-3 backdrop-blur-sm">
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Map Legend</p>
-            {legendItems.map((item) => (
-              <div key={item.type} className="flex items-center gap-2 py-1">
-                <span
-                  className="grid h-4 w-4 shrink-0 place-items-center rounded-full"
-                  style={{ backgroundColor: item.color }}
-                >
-                  <item.icon size={9} color="#0a0f1a" strokeWidth={2.5} />
-                </span>
-                <span className="text-[12px] text-slate-300">{item.label}</span>
-              </div>
-            ))}
-            <div className="mt-2 flex items-center gap-2 border-t border-white/[0.06] pt-2">
-              <span className="h-2.5 w-6 rounded-full bg-gradient-to-r from-emerald-500 via-yellow-500 to-rose-600" />
-              <span className="text-[12px] text-slate-300">AI Susceptibility Layer</span>
-            </div>
-          </div>
-
-          {/* Severity scale, top-right */}
-          <div className="absolute right-4 top-4 z-[400] flex items-center gap-2 rounded-lg border border-white/[0.08] bg-ink-800/90 px-3 py-2 backdrop-blur-sm">
-            <span className="text-[11px] font-medium text-slate-300">Risk Tier</span>
-            <span className="h-2 w-24 rounded-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-600" />
-            <span className="font-mono text-[11px] font-bold text-slate-200">
-              {livePrediction?.risk_level || "MODERATE"}
-            </span>
-          </div>
-
-          {/* Depth legend, bottom-right */}
-          <div className="absolute bottom-20 right-4 z-[400] rounded-lg border border-white/[0.08] bg-ink-800/90 px-3 py-2.5 backdrop-blur-sm">
-            <div className="flex h-24 gap-2">
-              <div className="w-2 rounded-full bg-gradient-to-t from-emerald-500 via-amber-500 to-rose-600" />
-              <div className="flex flex-col justify-between py-0.5 text-[10.5px] text-slate-400">
-                <span>Critical</span>
-                <span className="text-slate-500">High</span>
-                <span>Moderate</span>
-                <span className="text-slate-500">Low</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Time horizon / rainfall slider */}
-          <div className="absolute inset-x-0 bottom-4 z-[400] flex justify-center px-4">
-            <RainfallSlider
-              value={horizon}
-              onChange={setHorizon}
-              className="w-[420px]"
-            />
-          </div>
         </div>
       </div>
     </div>
   );
 }
+

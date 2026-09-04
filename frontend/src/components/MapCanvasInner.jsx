@@ -27,9 +27,14 @@ export default function MapCanvasInner({
   zoom = 14,
   className = "",
   interactive = true,
+  horizon = 62,
+  center,
+  marker,
 }) {
   const containerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const severeZoneRef = useRef(null);
+  const floodZoneRef = useRef(null);
   const dark = variant === "dark";
 
   useEffect(() => {
@@ -45,7 +50,7 @@ export default function MapCanvasInner({
     }
 
     const map = L.map(containerRef.current, {
-      center: CENTER,
+      center: center || CENTER,
       zoom: zoom,
       zoomControl: false,
       scrollWheelZoom: interactive,
@@ -69,7 +74,7 @@ export default function MapCanvasInner({
     }
 
     // Moderate risk outer zone
-    L.polygon(floodZone, {
+    floodZoneRef.current = L.polygon(floodZone, {
       color: "#e2483d",
       weight: 1.5,
       fillColor: "#e2483d",
@@ -77,7 +82,7 @@ export default function MapCanvasInner({
     }).addTo(map);
 
     // Severe risk inner zone
-    L.polygon(severeZone, {
+    severeZoneRef.current = L.polygon(severeZone, {
       color: "#a3172e",
       weight: 1.5,
       fillColor: "#a3172e",
@@ -92,6 +97,21 @@ export default function MapCanvasInner({
         dashArray: "1 10",
         lineCap: "round",
       }).addTo(map);
+    }
+
+    // Dynamic marker
+    if (marker) {
+      const circle = L.circleMarker([marker.lat, marker.lng], {
+        radius: 8,
+        color: "#ffffff",
+        weight: 2,
+        fillColor: "#e2483d",
+        fillOpacity: 1,
+      });
+      if (marker.label) {
+        circle.bindTooltip(marker.label, { direction: "top", offset: [0, -8] });
+      }
+      circle.addTo(map);
     }
 
     // Markers
@@ -127,6 +147,8 @@ export default function MapCanvasInner({
       }
     };
   }, [dark, zoom, interactive, showEvacuation, showMarkers, showOverlay, overlayOpacity]);
+
+  }, [horizon, dark, center]);
 
   return (
     <div className={`relative h-full w-full overflow-hidden ${className}`}>

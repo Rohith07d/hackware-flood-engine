@@ -38,6 +38,7 @@ export default function MobileResidentView() {
             <MapCanvas
               variant="light"
               showMarkers={false}
+              showOverlay={false}
               showEvacuation={showEvacuation}
             />
             <button

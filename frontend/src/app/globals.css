@@ -76,3 +76,16 @@ body {
 .pulse-ring {
   animation: pulse-ring 2.2s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
 }
+
+/* Override all leaflet cursors to be a black plus sign */
+.leaflet-container,
+.leaflet-interactive,
+.leaflet-grab,
+.leaflet-crosshair,
+.leaflet-dragging,
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable,
+.leaflet-container .leaflet-interactive {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='black' d='M7 0h2v7h7v2H9v7H7V9H0V7h7V0z'/%3E%3C/svg%3E") 8 8, crosshair !important;
+}

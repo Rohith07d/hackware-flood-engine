@@ -138,11 +138,25 @@ class LightGBMFloodPredictor:
         # Step 1: Terrain features from DEM
         terrain_feats = terrain_service.sample_terrain_features(latitude, longitude)
 
-        # Step 2: Rainfall features
-        rain_feats = get_rainfall_scenario_features(rainfall_mm)
+        # Step 2: Rainfall features from simulation (or live source)
+        rainfall_feats = get_rainfall_scenario_features(rainfall_mm)
 
-        # Merge into 13 features
-        features = {**terrain_feats, **rain_feats}
+        # Merge into the exact 13 features expected by the model
+        features = {
+            "elevation": terrain_feats.get("elevation", 505.0),
+            "slope": terrain_feats.get("slope", 2.5),
+            "aspect": terrain_feats.get("aspect", 180.0),
+            "curvature": terrain_feats.get("curvature", 0.0),
+            "tri": terrain_feats.get("tri", 2.0),
+            "twi": terrain_feats.get("twi", 8.5),
+            "rel_elev": terrain_feats.get("rel_elev", 0.0),
+            "flow_acc_log": terrain_feats.get("flow_acc_log", 3.0),
+            "dist_to_stream": terrain_feats.get("dist_to_stream", 500.0),
+            "total_rainfall_mm": rainfall_feats.get("total_rainfall_mm", 0.0),
+            "max_hourly_mm": rainfall_feats.get("max_hourly_mm", 0.0),
+            "max_cum24h_mm": rainfall_feats.get("max_cum24h_mm", 0.0),
+            "max_api": rainfall_feats.get("max_api", 0.0),
+        }
 
         # Apply any explicit overrides if provided
         if overrides:

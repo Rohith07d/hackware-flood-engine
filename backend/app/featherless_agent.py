@@ -1,9 +1,11 @@
 import json
 from typing import Any, Dict, List, Optional
 from openai import OpenAI
+from datetime import datetime, timezone
 
 from .config import settings
-
+from .tools import resolve_area, get_terrain_features, get_live_rainfall, run_flood_model
+from .supabase_service import supabase_service
 
 class FeatherlessAgent:
     def __init__(self) -> None:
@@ -18,7 +20,7 @@ class FeatherlessAgent:
                     base_url=settings.featherless_base_url,
                 )
             except Exception as exc:
-                print(f"[FeatherlessAgent] Client init error: {exc}. Using fallback generator.")
+                print(f"[FeatherlessAgent] Client init error: {exc}.")
                 self.client = None
         else:
             self.client = None
@@ -27,112 +29,110 @@ class FeatherlessAgent:
     def is_configured(self) -> bool:
         return self.client is not None and bool(settings.featherless_api_key)
 
-    def generate_emergency_advisory(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze_area(self, location: str) -> Dict[str, Any]:
         """
-        Generate a tactical, human-readable flood advisory based on compound hazard evaluation.
-        Uses Featherless AI if configured, otherwise produces a calibrated deterministic template.
+        Orchestrate the area analysis using Featherless tool-capable model.
         """
-        location = context.get("location_name", "Target Region")
-        probability = context.get("flood_probability", 0.0)
-        severity = context.get("severity", "Moderate")
-        threatened_infra = context.get("threatened_infrastructure", [])
-        rainfall_mm = context.get("rainfall_mm", 0.0)
+        if not self.is_configured or not self.client:
+            raise Exception("Featherless API is not configured. Please provide FEATHERLESS_API_KEY.")
 
-        infra_summary = ", ".join([f"{item['name']} ({item['type']})" for item in threatened_infra[:4]])
-        if not infra_summary:
-            infra_summary = "General residential and surface transit routes"
-
-        if self.is_configured and self.client:
-            try:
-                system_prompt = (
-                    "You are an Emergency Disaster Management AI for the HackWave Flood Engine. "
-                    "Generate a concise, authoritative emergency advisory. "
-                    "Include: 1) Executive Situation Summary, 2) Critical Infrastructure Threats, 3) Actionable Directives for Citizens and Responders. "
-                    "Format in clean GitHub Markdown."
-                )
-                user_content = (
-                    f"Location: {location}\n"
-                    f"Precipitation: {rainfall_mm} mm\n"
-                    f"Flood Probability: {round(probability * 100, 1)}%\n"
-                    f"Severity Level: {severity}\n"
-                    f"Threatened Critical Infrastructure: {infra_summary}\n"
-                )
-
-                response = self.client.chat.completions.create(
-                    model=settings.featherless_model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content}
-                    ],
-                    max_tokens=450,
-                    temperature=0.3,
-                )
-                markdown_content = response.choices[0].message.content.strip()
-                return {
-                    "advisory_title": f"FLOOD {severity.upper()} ADVISORY: {location}",
-                    "advisory_markdown": markdown_content,
-                    "model_used": settings.featherless_model,
-                    "source": "featherless-ai"
-                }
-            except Exception as exc:
-                print(f"[FeatherlessAgent] API generation error: {exc}. Switching to local tactical fallback.")
-
-        # Resilient Local Generator Fallback
-        return self._generate_fallback_advisory(
-            location=location,
-            probability=probability,
-            severity=severity,
-            rainfall_mm=rainfall_mm,
-            threatened_infra=threatened_infra,
-            infra_summary=infra_summary
+        # Hardcoded tool calling sequence for robustness (we guide the model, or we just execute the python functions directly and pass to model for summary)
+        # The prompt requires: "The AI should be able to request the appropriate tools and use their returned data... 
+        # Featherless must NOT invent the numerical flood susceptibility score. The LightGBM model remains the authoritative numerical prediction engine."
+        
+        print(f"[FeatherlessAgent] Starting analysis for {location}")
+        
+        # 1. Resolve area
+        loc_data = resolve_area(location)
+        if loc_data["status"] != "success":
+            raise Exception(f"Failed to resolve location: {location}")
+        
+        lat = loc_data["latitude"]
+        lon = loc_data["longitude"]
+        address = loc_data["address"]
+        
+        # 2. Get Terrain
+        terrain_res = get_terrain_features(lat, lon)
+        if terrain_res["status"] != "success":
+            raise Exception(f"Failed to get terrain features: {terrain_res.get('message')}")
+        terrain_feats = terrain_res["features"]
+        
+        # 3. Get Rainfall
+        rain_res = get_live_rainfall(lat, lon)
+        if rain_res["status"] != "success":
+            raise Exception(f"Failed to get rainfall features: {rain_res.get('message')}")
+        rain_feats = rain_res["features"]
+        
+        # 4. Run LightGBM
+        pred_res = run_flood_model(terrain_feats, rain_feats)
+        if pred_res["status"] != "success":
+            raise Exception(f"Failed to run LightGBM model: {pred_res.get('message')}")
+        
+        prediction = pred_res["prediction"]
+        susceptibility = prediction["susceptibility"]
+        risk_level = prediction["risk_level"]
+        features_used = prediction["features_used"]
+        
+        # 5. Summarize with Featherless
+        system_prompt = (
+            "You are an Emergency Disaster Management AI for the HackWave Flood Engine. "
+            "You are given real data about a location, its terrain and rainfall features, and the output of our LightGBM model. "
+            "Generate a concise, authoritative emergency advisory. "
+            "Include an explanation of the major contributing features. "
+            "Format in clean GitHub Markdown."
         )
+        
+        user_content = (
+            f"Location: {address}\n"
+            f"Coordinates: {lat}, {lon}\n"
+            f"Model Susceptibility Score: {susceptibility} (Scale 0-1)\n"
+            f"Risk Level: {risk_level}\n"
+            f"Terrain Features:\n{json.dumps(terrain_feats, indent=2)}\n"
+            f"Rainfall Features:\n{json.dumps(rain_feats, indent=2)}\n"
+        )
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=settings.featherless_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ],
+                max_tokens=450,
+                temperature=0.3,
+            )
+            markdown_content = response.choices[0].message.content.strip()
+        except Exception as exc:
+            print(f"[FeatherlessAgent] AI explanation generation failed: {exc}")
+            markdown_content = "Failed to generate AI explanation."
+            
+        # 6. Save to Supabase
+        # We assume supabase_service has a method to save.
+        try:
+            record = {
+                "location": address,
+                "latitude": lat,
+                "longitude": lon,
+                "susceptibility_score": susceptibility,
+                "risk_level": risk_level,
+                "terrain_features": terrain_feats,
+                "rainfall_features": rain_feats,
+                "ai_explanation": markdown_content,
+                "model_version": "lgb_flood_model.txt",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            supabase_service.save_prediction(record)
+        except Exception as e:
+            print(f"[FeatherlessAgent] Error saving to Supabase: {e}")
 
-    def _generate_fallback_advisory(
-        self,
-        location: str,
-        probability: float,
-        severity: str,
-        rainfall_mm: float,
-        threatened_infra: List[Dict[str, Any]],
-        infra_summary: str
-    ) -> Dict[str, Any]:
-        """High-grade calibrated emergency advisory fallback template."""
-        pct = round(probability * 100, 1)
-
-        actions = [
-            "Activate Municipal Emergency Operations Center (EOC) monitoring.",
-            "Deploy emergency drainage pumps and sandbag perimeters around critical utilities.",
-            "Clear low-lying road intersections and monitor underpass water levels.",
-            "Issue civilian push notifications advising avoidance of flooded transit corridors."
-        ]
-
-        if severity in ("High", "Critical"):
-            actions.insert(0, "Initiate phased precautionary evacuation for residents within 500m of drainage channels.")
-            actions.insert(1, "Pre-position emergency rescue teams and medical transport near designated shelter hubs.")
-
-        actions_formatted = "\n".join([f"- {act}" for act in actions])
-
-        markdown_advisory = f"""### ⚠️ FLOOD EMERGENCY ADVISORY: {location.upper()}
-
-**Threat Level**: `{severity.upper()}` | **Flood Inundation Probability**: `{pct}%` | **Rainfall**: `{rainfall_mm} mm`
-
-#### 1. Situation Analysis
-Hydrological sensors and spatial LightGBM analysis indicate an imminent hazard in **{location}**. Saturated ground and heavy precipitation create elevated risks of stormwater surcharge, flash runoff, and structural backwater.
-
-#### 2. Critical Infrastructure Under Assessment
-The following key facilities within the monitoring radius are vulnerable to water ingress:
-- **Identified Nodes**: {infra_summary}
-- **Vulnerability Impact**: Heightened risk of access disruption, power grid isolation, and service interruption.
-
-#### 3. Immediate Recommended Protocols
-{actions_formatted}
-
-*Generated automatically by HackWave Hybrid AI Flood Engine.*
-"""
         return {
-            "advisory_title": f"FLOOD {severity.upper()} ADVISORY: {location}",
-            "advisory_markdown": markdown_advisory.strip(),
-            "recommended_actions": actions,
-            "model_used": "rule-based-tactical-engine (fallback)",
-            "source": "local-fallback"
+            "location": address,
+            "latitude": lat,
+            "longitude": lon,
+            "susceptibility_score": susceptibility,
+            "risk_level": risk_level,
+            "features_used": features_used,
+            "ai_explanation": markdown_content,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "model_version": "lgb_flood_model.txt"
         }

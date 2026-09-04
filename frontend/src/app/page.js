@@ -10,25 +10,13 @@ export default function HomePage() {
   // dashboard on large ones). Residents and control-room operators are
   // different audiences on different devices in real use — the toggle
   // below makes it easy to preview both from one browser window.
-  const [view, setView] = useState("auto");
+  const [view, setView] = useState("desktop");
 
   return (
     <div className="h-screen w-screen bg-[#e7edf3]">
       <ViewToggle view={view} setView={setView} />
 
-      {/* Auto: responsive — resident view under lg, dashboard at lg+ */}
-      {view === "auto" && (
-        <>
-          <div className="h-full w-full lg:hidden">
-            <PhoneFrame>
-              <MobileResidentView />
-            </PhoneFrame>
-          </div>
-          <div className="hidden h-full w-full lg:block">
-            <DesktopDashboard />
-          </div>
-        </>
-      )}
+
 
       {view === "mobile" && (
         <div className="h-full w-full">
@@ -59,7 +47,6 @@ function PhoneFrame({ children }) {
 
 function ViewToggle({ view, setView }) {
   const options = [
-    { id: "auto", label: "Responsive" },
     { id: "mobile", label: "Resident app", icon: Smartphone },
     { id: "desktop", label: "Ops dashboard", icon: MonitorSmartphone },
   ];

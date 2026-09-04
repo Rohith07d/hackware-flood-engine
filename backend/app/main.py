@@ -19,6 +19,8 @@ from .schemas import (
     AlertGenerationResponse,
     InfrastructureItem,
     HazardMapMetadataResponse,
+    AnalyzeAreaRequest,
+    AnalyzeAreaResponse,
 )
 from .ml_predictor import FEATURE_NAMES, LightGBMFloodPredictor, predictor
 from .terrain_service import terrain_service
@@ -74,6 +76,27 @@ def health_check() -> HealthResponse:
         llm_configured=llm_configured,
         dem_cached=dem_cached,
     )
+
+@app.get("/health/featherless", tags=["Health"])
+def health_check_featherless():
+    """Verify Featherless AI connectivity."""
+    from .featherless_agent import FeatherlessAgent
+    agent = FeatherlessAgent()
+    return {
+        "is_configured": agent.is_configured,
+        "model": settings.featherless_model
+    }
+
+@app.post("/analyze-area", response_model=AnalyzeAreaResponse, tags=["Prediction"])
+def analyze_area(request: AnalyzeAreaRequest) -> AnalyzeAreaResponse:
+    """End-to-End Area-based flood AI with Featherless."""
+    from .featherless_agent import FeatherlessAgent
+    agent = FeatherlessAgent()
+    try:
+        res = agent.analyze_area(request.location)
+        return AnalyzeAreaResponse(**res)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/model/status", response_model=ModelStatusResponse, tags=["Model"])
