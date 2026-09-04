@@ -1,0 +1,1 @@
+-- Supabase seed bootstrap for HackWave Flood Engine infrastructure data.

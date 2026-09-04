@@ -1,0 +1,1 @@
+-- Supabase schema bootstrap for HackWave Flood Engine.
