@@ -33,13 +33,6 @@ class FeatherlessAgent:
         """
         Orchestrate the area analysis using Featherless tool-capable model.
         """
-        if not self.is_configured or not self.client:
-            raise Exception("Featherless API is not configured. Please provide FEATHERLESS_API_KEY.")
-
-        # Hardcoded tool calling sequence for robustness (we guide the model, or we just execute the python functions directly and pass to model for summary)
-        # The prompt requires: "The AI should be able to request the appropriate tools and use their returned data... 
-        # Featherless must NOT invent the numerical flood susceptibility score. The LightGBM model remains the authoritative numerical prediction engine."
-        
         print(f"[FeatherlessAgent] Starting analysis for {location}")
         
         # 1. Resolve area
@@ -73,38 +66,50 @@ class FeatherlessAgent:
         risk_level = prediction["risk_level"]
         features_used = prediction["features_used"]
         
-        # 5. Summarize with Featherless
-        system_prompt = (
-            "You are an Emergency Disaster Management AI for the HackWave Flood Engine. "
-            "You are given real data about a location, its terrain and rainfall features, and the output of our LightGBM model. "
-            "Generate a concise, authoritative emergency advisory. "
-            "Include an explanation of the major contributing features. "
-            "Format in clean GitHub Markdown."
+        # 5. Summarize with Featherless (or graceful deterministic fallback)
+        elev = terrain_feats.get("elevation", 0)
+        slope = terrain_feats.get("slope", 0)
+        precip = rain_feats.get("total_rainfall_mm", 0)
+        markdown_content = (
+            f"### Tactical Flood Advisory: {address}\n\n"
+            f"**Inundation Risk Level**: `{risk_level}` (Spatial Score: {susceptibility:.2f})\n\n"
+            f"- **Topography**: Elevation {elev:.1f} m, Slope {slope:.1f}°.\n"
+            f"- **Hydrology**: Projected Precipitation {precip:.1f} mm.\n\n"
+            f"Automated LightGBM spatial probability model evaluation indicates {risk_level.lower()} "
+            f"vulnerability under current saturation dynamics. Civil defense and local residents should "
+            f"monitor low-lying stormwater channels and transit corridors."
         )
         
-        user_content = (
-            f"Location: {address}\n"
-            f"Coordinates: {lat}, {lon}\n"
-            f"Model Susceptibility Score: {susceptibility} (Scale 0-1)\n"
-            f"Risk Level: {risk_level}\n"
-            f"Terrain Features:\n{json.dumps(terrain_feats, indent=2)}\n"
-            f"Rainfall Features:\n{json.dumps(rain_feats, indent=2)}\n"
-        )
-        
-        try:
-            response = self.client.chat.completions.create(
-                model=settings.featherless_model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content}
-                ],
-                max_tokens=450,
-                temperature=0.3,
+        if self.is_configured and self.client:
+            system_prompt = (
+                "You are an Emergency Disaster Management AI for the HackWave Flood Engine. "
+                "You are given real data about a location, its terrain and rainfall features, and the output of our LightGBM model. "
+                "Generate a concise, authoritative emergency advisory. "
+                "Include an explanation of the major contributing features. "
+                "Format in clean GitHub Markdown."
             )
-            markdown_content = response.choices[0].message.content.strip()
-        except Exception as exc:
-            print(f"[FeatherlessAgent] AI explanation generation failed: {exc}")
-            markdown_content = "Failed to generate AI explanation."
+            user_content = (
+                f"Location: {address}\n"
+                f"Coordinates: {lat}, {lon}\n"
+                f"Model Susceptibility Score: {susceptibility} (Scale 0-1)\n"
+                f"Risk Level: {risk_level}\n"
+                f"Terrain Features:\n{json.dumps(terrain_feats, indent=2)}\n"
+                f"Rainfall Features:\n{json.dumps(rain_feats, indent=2)}\n"
+            )
+            try:
+                response = self.client.chat.completions.create(
+                    model=settings.featherless_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content}
+                    ],
+                    max_tokens=450,
+                    temperature=0.3,
+                )
+                if response.choices and response.choices[0].message.content:
+                    markdown_content = response.choices[0].message.content.strip()
+            except Exception as exc:
+                print(f"[FeatherlessAgent] AI explanation generation failed: {exc}. Using deterministic summary.")
             
         # 6. Save to Supabase
         # We assume supabase_service has a method to save.
