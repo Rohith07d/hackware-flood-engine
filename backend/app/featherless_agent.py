@@ -136,3 +136,55 @@ class FeatherlessAgent:
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "model_version": "lgb_flood_model.txt"
         }
+
+    def generate_emergency_advisory(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate a tactical emergency advisory from context."""
+        if not self.is_configured or not self.client:
+            # Fallback when Featherless is not configured
+            return {
+                "advisory_title": f"Flood Alert: {context.get('location_name', 'Unknown')}",
+                "advisory_markdown": f"Automated alert. Susceptibility: {context.get('flood_probability')}. Severity: {context.get('severity')}.",
+                "recommended_actions": [
+                    "Monitor civil defense and municipal radar feeds.",
+                    "Avoid underpasses, riverbanks, and low-lying stormwater drains."
+                ]
+            }
+
+        system_prompt = (
+            "You are an Emergency Disaster Management AI for the HackWave Flood Engine. "
+            "Based on the provided context, generate a tactical emergency advisory in JSON format. "
+            "Output must be valid JSON with keys: 'advisory_title', 'advisory_markdown', 'recommended_actions' (list of strings)."
+        )
+        
+        user_content = json.dumps(context, indent=2)
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=settings.featherless_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ],
+                max_tokens=450,
+                temperature=0.3,
+                response_format={ "type": "json_object" }
+            )
+            result = json.loads(response.choices[0].message.content.strip())
+            return {
+                "advisory_title": result.get("advisory_title", "Emergency Flood Advisory"),
+                "advisory_markdown": result.get("advisory_markdown", "Advisory details unavailable."),
+                "recommended_actions": result.get("recommended_actions", [
+                    "Monitor civil defense and municipal radar feeds.",
+                    "Avoid underpasses, riverbanks, and low-lying stormwater drains."
+                ])
+            }
+        except Exception as exc:
+            print(f"[FeatherlessAgent] AI advisory generation failed: {exc}")
+            return {
+                "advisory_title": f"Flood Alert: {context.get('location_name', 'Unknown')}",
+                "advisory_markdown": f"Automated alert (AI unreachable). Susceptibility: {context.get('flood_probability')}. Severity: {context.get('severity')}.",
+                "recommended_actions": [
+                    "Monitor civil defense and municipal radar feeds.",
+                    "Avoid underpasses, riverbanks, and low-lying stormwater drains."
+                ]
+            }
