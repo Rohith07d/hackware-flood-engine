@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { CENTER, floodZone, severeZone, evacuationRoute, mapMarkers } from "../data/floodData.js";
+import { API_BASE_URL } from "../lib/constants.js";
 
 const markerColors = {
   gauge: "#f5b942",
@@ -17,6 +18,9 @@ const SUSCEPTIBILITY_BOUNDS = [
   [16.99930555555556, 77.99986111111112],
   [18.00013888888889, 79.00069444444445],
 ];
+const SUSCEPTIBILITY_OVERLAY_URL = API_BASE_URL
+  ? `${API_BASE_URL}/hazard-map/overlay.png`
+  : "/flood_overlay.png";
 
 export default function MapCanvasInner({
   variant = "light", // "light" | "dark"
@@ -62,7 +66,7 @@ export default function MapCanvasInner({
 
     // Real LightGBM AI Flood Susceptibility Overlay Raster
     if (showOverlay) {
-      L.imageOverlay("/flood_overlay.png", SUSCEPTIBILITY_BOUNDS, {
+      L.imageOverlay(SUSCEPTIBILITY_OVERLAY_URL, SUSCEPTIBILITY_BOUNDS, {
         opacity: overlayOpacity,
         zIndex: 5,
       }).addTo(map);

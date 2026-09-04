@@ -33,7 +33,8 @@ def compute_rainfall_metrics_from_series(hourly_rain_mm: List[float], k_decay: f
         }
 
     rain_arr = np.array(hourly_rain_mm, dtype=np.float64)
-    rain_arr = np.nan_to_num(rain_arr, nan=0.0)
+    rain_arr = np.nan_to_num(rain_arr, nan=0.0, posinf=0.0, neginf=0.0)
+    rain_arr = np.clip(rain_arr, 0.0, None)
 
     total_rainfall = float(np.sum(rain_arr))
     max_hourly = float(np.max(rain_arr))
@@ -47,6 +48,7 @@ def compute_rainfall_metrics_from_series(hourly_rain_mm: List[float], k_decay: f
 
     # API calculation
     api = np.zeros(len(rain_arr), dtype=np.float64)
+    api[0] = rain_arr[0]
     for i in range(1, len(rain_arr)):
         api[i] = api[i - 1] * k_decay + rain_arr[i]
     max_api = float(np.max(api))

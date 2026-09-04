@@ -40,6 +40,7 @@ class LightGBMFloodPredictor:
 
     def __init__(self) -> None:
         self.model: Optional[lgb.Booster] = None
+        self.model_feature_names: List[str] = FEATURE_NAMES.copy()
         self._load_model()
 
     @classmethod
@@ -62,12 +63,19 @@ class LightGBMFloodPredictor:
         try:
             print(f"[LightGBM] Loading trained model from {model_file}...")
             self.model = lgb.Booster(model_file=str(model_file))
-            model_features = self.model.feature_name()
+            model_features = list(self.model.feature_name())
             print(f"[LightGBM] Model loaded successfully with {len(model_features)} features: {model_features}")
 
-            # Verify feature compatibility
-            if len(model_features) != len(FEATURE_NAMES):
-                print(f"[LightGBM] Warning: Model feature count ({len(model_features)}) != expected ({len(FEATURE_NAMES)})")
+            missing = [f for f in FEATURE_NAMES if f not in model_features]
+            extras = [f for f in model_features if f not in FEATURE_NAMES]
+            if missing or extras:
+                raise RuntimeError(
+                    f"[LightGBM] Model feature mismatch. Missing: {missing or 'none'}, Extra: {extras or 'none'}"
+                )
+
+            self.model_feature_names = model_features
+            if self.model_feature_names != FEATURE_NAMES:
+                print("[LightGBM] Warning: Feature order differs from expected baseline; using model-native order.")
         except Exception as exc:
             raise RuntimeError(f"[LightGBM] Failed to load trained model: {exc}") from exc
 
@@ -77,12 +85,13 @@ class LightGBMFloodPredictor:
         Preserves exact feature order.
         Rejects missing, NaN, or infinite inputs.
         """
-        missing = [f for f in FEATURE_NAMES if f not in feature_dict or feature_dict[f] is None]
+        ordered_features = self.model_feature_names or FEATURE_NAMES
+        missing = [f for f in ordered_features if f not in feature_dict or feature_dict[f] is None]
         if missing:
             raise ValueError(f"Missing required features: {missing}. Expected all 13 features: {FEATURE_NAMES}")
 
         values = []
-        for name in FEATURE_NAMES:
+        for name in ordered_features:
             raw_val = feature_dict[name]
             try:
                 val = float(raw_val)
@@ -117,7 +126,7 @@ class LightGBMFloodPredictor:
         return {
             "susceptibility": round(score, 4),
             "risk_level": risk,
-            "features_used": {k: feature_dict[k] for k in FEATURE_NAMES if k in feature_dict},
+            "features_used": {k: feature_dict[k] for k in (self.model_feature_names or FEATURE_NAMES) if k in feature_dict},
         }
 
     def predict_coordinate(
