@@ -1,6 +1,8 @@
 "use client";
 
-import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, Tooltip, ImageOverlay } from "react-leaflet";
+import { useEffect, useRef } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { CENTER, floodZone, severeZone, evacuationRoute, mapMarkers } from "../data/floodData.js";
 
 const markerColors = {
@@ -16,25 +18,6 @@ const SUSCEPTIBILITY_BOUNDS = [
   [18.00013888888889, 79.00069444444445],
 ];
 
-function MarkerDot({ marker, dark }) {
-  return (
-    <CircleMarker
-      center={[marker.lat, marker.lng]}
-      radius={6}
-      pathOptions={{
-        color: dark ? "#0a0f1a" : "#ffffff",
-        weight: 2,
-        fillColor: markerColors[marker.type],
-        fillOpacity: 1,
-      }}
-    >
-      <Tooltip direction="top" offset={[0, -6]}>
-        {marker.label}
-      </Tooltip>
-    </CircleMarker>
-  );
-}
-
 export default function MapCanvasInner({
   variant = "light", // "light" | "dark"
   showMarkers = false,
@@ -45,66 +28,113 @@ export default function MapCanvasInner({
   className = "",
   interactive = true,
 }) {
+  const containerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
   const dark = variant === "dark";
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // Tear down any existing Leaflet map on this container to prevent "Map container is already initialized"
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+    if (containerRef.current._leaflet_id) {
+      containerRef.current._leaflet_id = null;
+    }
+
+    const map = L.map(containerRef.current, {
+      center: CENTER,
+      zoom: zoom,
+      zoomControl: false,
+      scrollWheelZoom: interactive,
+      dragging: interactive,
+      doubleClickZoom: interactive,
+      touchZoom: interactive,
+    });
+    mapInstanceRef.current = map;
+
+    // TileLayer (OpenStreetMap)
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    // Real LightGBM AI Flood Susceptibility Overlay Raster
+    if (showOverlay) {
+      L.imageOverlay("/flood_overlay.png", SUSCEPTIBILITY_BOUNDS, {
+        opacity: overlayOpacity,
+        zIndex: 5,
+      }).addTo(map);
+    }
+
+    // Moderate risk outer zone
+    L.polygon(floodZone, {
+      color: "#e2483d",
+      weight: 1.5,
+      fillColor: "#e2483d",
+      fillOpacity: dark ? 0.22 : 0.26,
+    }).addTo(map);
+
+    // Severe risk inner zone
+    L.polygon(severeZone, {
+      color: "#a3172e",
+      weight: 1.5,
+      fillColor: "#a3172e",
+      fillOpacity: dark ? 0.38 : 0.42,
+    }).addTo(map);
+
+    // Evacuation route
+    if (showEvacuation) {
+      L.polyline(evacuationRoute, {
+        color: "#1493ab",
+        weight: 4,
+        dashArray: "1 10",
+        lineCap: "round",
+      }).addTo(map);
+    }
+
+    // Markers
+    if (showMarkers && mapMarkers && mapMarkers.length > 0) {
+      mapMarkers.forEach((m) => {
+        const marker = L.circleMarker([m.lat, m.lng], {
+          radius: 6,
+          color: dark ? "#0a0f1a" : "#ffffff",
+          weight: 2,
+          fillColor: markerColors[m.type] || "#ffffff",
+          fillOpacity: 1,
+        });
+        marker.bindTooltip(m.label, { direction: "top", offset: [0, -6] });
+        marker.addTo(map);
+      });
+    }
+
+    // Invalidate size once container layout stabilizes
+    const timer = setTimeout(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    }, 150);
+
+    return () => {
+      clearTimeout(timer);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      if (containerRef.current && containerRef.current._leaflet_id) {
+        containerRef.current._leaflet_id = null;
+      }
+    };
+  }, [dark, zoom, interactive, showEvacuation, showMarkers, showOverlay, overlayOpacity]);
 
   return (
     <div className={`relative h-full w-full overflow-hidden ${className}`}>
-      <MapContainer
-        center={CENTER}
-        zoom={zoom}
-        zoomControl={false}
-        scrollWheelZoom={interactive}
-        dragging={interactive}
-        doubleClickZoom={interactive}
-        touchZoom={interactive}
-        className={dark ? "map-dark" : ""}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-
-        {/* Real LightGBM AI Flood Susceptibility Overlay Raster */}
-        {showOverlay && (
-          <ImageOverlay
-            url="/flood_overlay.png"
-            bounds={SUSCEPTIBILITY_BOUNDS}
-            opacity={overlayOpacity}
-            zIndex={5}
-          />
-        )}
-
-        {/* Moderate risk outer zone */}
-        <Polygon
-          positions={floodZone}
-          pathOptions={{
-            color: "#e2483d",
-            weight: 1.5,
-            fillColor: "#e2483d",
-            fillOpacity: dark ? 0.22 : 0.26,
-          }}
-        />
-
-        {/* Severe risk inner zone */}
-        <Polygon
-          positions={severeZone}
-          pathOptions={{
-            color: "#a3172e",
-            weight: 1.5,
-            fillColor: "#a3172e",
-            fillOpacity: dark ? 0.38 : 0.42,
-          }}
-        />
-
-        {showEvacuation && (
-          <Polyline
-            positions={evacuationRoute}
-            pathOptions={{ color: "#1493ab", weight: 4, dashArray: "1 10", lineCap: "round" }}
-          />
-        )}
-
-        {showMarkers && mapMarkers.map((m) => <MarkerDot key={m.id} marker={m} dark={dark} />)}
-      </MapContainer>
+      <div
+        ref={containerRef}
+        className={`h-full w-full ${dark ? "map-dark" : ""}`}
+        style={{ minHeight: "100%", width: "100%" }}
+      />
     </div>
   );
 }
