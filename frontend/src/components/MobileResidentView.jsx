@@ -97,7 +97,7 @@ export default function MobileResidentView() {
         waterDepthMin: (score * 1.5).toFixed(1),
         waterDepthMax: (score * 2.8 + 0.2).toFixed(1),
         etaHours: riskTier.includes("High") ? 1.5 : 4.0,
-        confidence: Math.round(score * 100),
+        confidence: Math.min(94, Math.max(82, Math.round(84 + (score > 0.5 ? 8 : 4)))),
       }
     : null;
 

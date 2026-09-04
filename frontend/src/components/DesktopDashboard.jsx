@@ -19,6 +19,7 @@ import {
   ExternalLink,
   Car,
   X,
+  Loader2,
 } from "lucide-react";
 import Logo from "./Logo.jsx";
 import MapCanvas from "./MapCanvas.jsx";
@@ -369,20 +370,28 @@ export default function DesktopDashboard() {
                   <div className="flex items-center gap-1.5 text-[10.5px] uppercase font-bold tracking-wider text-slate-400">
                     <MapPin size={12} className={tierStyle.text} />
                     <span>Selected Sector & Corridors</span>
+                    {isLoading && (
+                      <span className="flex items-center gap-1 text-[10px] text-cyan-400 font-mono lowercase">
+                        <Loader2 size={10} className="animate-spin" />
+                        analyzing...
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-[17px] font-bold text-white tracking-tight">
-                    {selectedArea?.area_name || "Gachibowli, Hyderabad"}
+                    {selectedArea?.area_name || (isLoading ? "Analyzing Sector..." : "Gachibowli, Hyderabad")}
                   </h2>
                 </div>
                 <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${tierStyle.badge}`}>
-                  {riskTier.toUpperCase()} RISK
+                  {isLoading && !selectedArea ? "ANALYZING" : `${riskTier.toUpperCase()} RISK`}
                 </span>
               </div>
 
               {/* Coordinates & Scenario Meta */}
               <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-white/10 pt-2 font-mono">
                 <span>
-                  {selectedArea?.coordinates?.latitude?.toFixed(4)}°N, {selectedArea?.coordinates?.longitude?.toFixed(4)}°E
+                  {selectedArea?.coordinates?.latitude !== undefined
+                    ? `${selectedArea.coordinates.latitude.toFixed(4)}°N, ${selectedArea.coordinates.longitude.toFixed(4)}°E`
+                    : "Fetching DEM Features..."}
                 </span>
                 <span>{rainfall} mm Rain</span>
               </div>
@@ -394,8 +403,15 @@ export default function DesktopDashboard() {
                 <span className="text-[12px] font-medium text-slate-300">
                   LightGBM Susceptibility Score
                 </span>
-                <span className="font-mono text-2xl font-black text-white">
-                  {scorePercent}%
+                <span className="font-mono text-2xl font-black text-white flex items-center gap-2">
+                  {isLoading && !selectedArea ? (
+                    <span className="text-base text-cyan-400 font-medium animate-pulse flex items-center gap-1.5">
+                      <Loader2 size={14} className="animate-spin" />
+                      Computing...
+                    </span>
+                  ) : (
+                    `${scorePercent}%`
+                  )}
                 </span>
               </div>
 
