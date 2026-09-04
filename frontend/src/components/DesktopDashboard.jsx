@@ -15,11 +15,21 @@ import {
   ShieldAlert,
   Sliders,
   RefreshCw,
+  Navigation,
+  ExternalLink,
+  Car,
+  X,
 } from "lucide-react";
 import Logo from "./Logo.jsx";
 import MapCanvas from "./MapCanvas.jsx";
 import RainfallSlider from "./RainfallSlider.jsx";
-import { analyzeArea, fetchHealth, fetchFeatherlessHealth } from "../lib/api.js";
+import {
+  analyzeArea,
+  fetchHealth,
+  fetchFeatherlessHealth,
+  fetchSearchSuggestions,
+  searchAreaWithAI,
+} from "../lib/api.js";
 
 const QUICK_AREAS = [
   "Gachibowli, Hyderabad",
@@ -70,14 +80,18 @@ const TIER_STYLES = {
 
 export default function DesktopDashboard() {
   const [searchInput, setSearchInput] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [rainfall, setRainfall] = useState(65);
   const [selectedArea, setSelectedArea] = useState(null);
+  const [selectedRoad, setSelectedRoad] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [backendHealth, setBackendHealth] = useState(null);
   const [featherlessStatus, setFeatherlessStatus] = useState(null);
   const [showReferenceRaster, setShowReferenceRaster] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview"); // "overview" | "features" | "tactics"
+  const [activeTab, setActiveTab] = useState("roads"); // "roads" | "overview" | "tactics" | "features"
 
+  const searchContainerRef = useRef(null);
   const currentCoordsRef = useRef({ latitude: 17.4401, longitude: 78.3489, location_name: "Gachibowli, Hyderabad" });
 
   // Core Area Analysis Request
@@ -94,6 +108,7 @@ export default function DesktopDashboard() {
       const res = await analyzeArea(payload);
       if (res && res.status === "success") {
         setSelectedArea(res);
+        setSelectedRoad(null);
         currentCoordsRef.current = {
           latitude: res.coordinates.latitude,
           longitude: res.coordinates.longitude,
@@ -118,14 +133,61 @@ export default function DesktopDashboard() {
     });
   }, []);
 
-  // Handle Search Submission
-  const handleSearch = (e) => {
+  // Fetch search suggestions as user types
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (showSuggestions) {
+        const list = await fetchSearchSuggestions(searchInput);
+        setSuggestions(list);
+      }
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [searchInput, showSuggestions]);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Handle Search Submission (supports natural language queries via Featherless AI)
+  const handleSearch = async (e) => {
     e?.preventDefault();
     if (!searchInput.trim()) return;
-    runAreaAnalysis({
-      location_name: searchInput.trim(),
-      rainfall_mm: rainfall,
-    });
+    setShowSuggestions(false);
+    setIsLoading(true);
+
+    try {
+      // If query is natural language sentence, use Featherless searchAreaWithAI
+      if (searchInput.trim().split(" ").length > 3 || searchInput.toLowerCase().includes("rain")) {
+        const aiRes = await searchAreaWithAI(searchInput.trim(), rainfall);
+        if (aiRes && aiRes.status === "success") {
+          setSelectedArea(aiRes);
+          setSelectedRoad(null);
+          currentCoordsRef.current = {
+            latitude: aiRes.coordinates.latitude,
+            longitude: aiRes.coordinates.longitude,
+            location_name: aiRes.area_name,
+          };
+          return;
+        }
+      }
+
+      // Default area lookup
+      await runAreaAnalysis({
+        location_name: searchInput.trim(),
+        rainfall_mm: rainfall,
+      });
+    } catch (err) {
+      console.error("Search error:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Handle Map Click
@@ -137,7 +199,7 @@ export default function DesktopDashboard() {
     });
   };
 
-  // Handle Rainfall Slider Change (re-run analysis for active area)
+  // Handle Rainfall Slider Change
   const handleSliderChange = (newVal) => {
     setRainfall(newVal);
   };
@@ -159,6 +221,10 @@ export default function DesktopDashboard() {
   const tierStyle = TIER_STYLES[riskTier] || TIER_STYLES["Moderate"];
   const scorePercent = selectedArea ? (selectedArea.susceptibility_score * 100).toFixed(1) : "0.0";
 
+  const roads = selectedArea?.affected_roads || [];
+  const submergedRoads = roads.filter((r) => r.inundation_tier in { Critical: 1, Severe: 1 });
+  const maxDepth = roads.length > 0 ? Math.max(...roads.map((r) => r.predicted_water_depth_m)) : 0;
+
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-950 font-sans text-slate-200">
       {/* Top Navigation Bar */}
@@ -168,7 +234,7 @@ export default function DesktopDashboard() {
           <div className="hidden md:flex items-center gap-2 pl-2 border-l border-white/10 text-[11px]">
             <span className="flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-medium text-cyan-300">
               <Sparkles size={11} className="text-cyan-400" />
-              Featherless AI Orchestrator
+              Featherless AI Geospatial Engine
             </span>
             <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 font-medium text-emerald-300">
               <Activity size={11} className="text-emerald-400" />
@@ -177,26 +243,68 @@ export default function DesktopDashboard() {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="flex flex-1 max-w-md mx-4 items-center">
-          <div className="relative w-full">
+        {/* Intelligent Featherless AI Search Bar with Autocomplete */}
+        <div ref={searchContainerRef} className="relative flex flex-1 max-w-md mx-4 items-center">
+          <form onSubmit={handleSearch} className="w-full relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search Hyderabad area (e.g. Gachibowli, Begumpet, Musi River)..."
-              className="w-full rounded-lg border border-white/15 bg-slate-800/80 py-1.5 pl-8 pr-20 text-[12.5px] text-white placeholder-slate-400 shadow-inner focus:border-cyan-400 focus:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+              onFocus={() => setShowSuggestions(true)}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setShowSuggestions(true);
+              }}
+              placeholder="Search Hyderabad area or ask (e.g. Begumpet, Musi River, Kondapur)..."
+              className="w-full rounded-lg border border-white/15 bg-slate-800/90 py-1.5 pl-8 pr-20 text-[12.5px] text-white placeholder-slate-400 shadow-inner focus:border-cyan-400 focus:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-cyan-400"
             />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput("")}
+                className="absolute right-16 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                <X size={13} />
+              </button>
+            )}
             <button
               type="submit"
               disabled={isLoading}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md bg-cyan-500/20 px-2 py-0.5 text-[11px] font-semibold text-cyan-300 hover:bg-cyan-500/30 transition disabled:opacity-50"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md bg-cyan-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-cyan-300 hover:bg-cyan-500/30 transition disabled:opacity-50"
             >
               Analyze
             </button>
-          </div>
-        </form>
+          </form>
+
+          {/* Autocomplete Dropdown */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 max-h-64 overflow-y-auto rounded-xl border border-white/15 bg-slate-900/95 p-1.5 shadow-2xl backdrop-blur-md z-50 thin-scroll">
+              <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 border-b border-white/10 mb-1">
+                Hyderabad Localities & Landmarks
+              </div>
+              {suggestions.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setSearchInput(item.name);
+                    setShowSuggestions(false);
+                    runAreaAnalysis({ location_name: item.name, rainfall_mm: rainfall });
+                  }}
+                  className="flex w-full items-start justify-between rounded-lg px-2.5 py-2 text-left transition hover:bg-white/10 active:bg-cyan-500/20"
+                >
+                  <div>
+                    <div className="text-[12.5px] font-medium text-white flex items-center gap-1.5">
+                      <MapPin size={12} className="text-cyan-400 shrink-0" />
+                      <span>{item.name}</span>
+                    </div>
+                    <div className="text-[10.5px] text-slate-400 pl-4">{item.category}</div>
+                  </div>
+                  <span className="text-[10px] text-cyan-400 font-mono mt-0.5">Select</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Action Controls & Health */}
         <div className="flex items-center gap-3">
@@ -251,7 +359,7 @@ export default function DesktopDashboard() {
 
       {/* Main Content: Left Analytics Sidebar + Right Interactive Map */}
       <div className="relative flex flex-1 overflow-hidden">
-        {/* Left Area Prediction & AI Strategy Card */}
+        {/* Left Area Prediction & Road Inundation Drawer */}
         <aside className="thin-scroll w-96 shrink-0 overflow-y-auto border-r border-white/10 bg-slate-900/95 p-4 space-y-4 z-10 flex flex-col justify-between">
           <div className="space-y-4">
             {/* Area Header Card */}
@@ -260,7 +368,7 @@ export default function DesktopDashboard() {
                 <div>
                   <div className="flex items-center gap-1.5 text-[10.5px] uppercase font-bold tracking-wider text-slate-400">
                     <MapPin size={12} className={tierStyle.text} />
-                    <span>Selected Target Sector</span>
+                    <span>Selected Sector & Corridors</span>
                   </div>
                   <h2 className="text-[17px] font-bold text-white tracking-tight">
                     {selectedArea?.area_name || "Gachibowli, Hyderabad"}
@@ -276,7 +384,7 @@ export default function DesktopDashboard() {
                 <span>
                   {selectedArea?.coordinates?.latitude?.toFixed(4)}°N, {selectedArea?.coordinates?.longitude?.toFixed(4)}°E
                 </span>
-                <span>{rainfall} mm Scenario</span>
+                <span>{rainfall} mm Rain</span>
               </div>
             </div>
 
@@ -306,20 +414,35 @@ export default function DesktopDashboard() {
                 </div>
               </div>
 
-              {/* Persistence Status */}
-              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400 border-t border-white/10">
-                <span className="flex items-center gap-1.5">
-                  <Database size={12} className="text-cyan-400" />
-                  <span>Storage:</span>
-                </span>
-                <span className="font-mono text-emerald-400 text-[10.5px]">
-                  {selectedArea?.storage_status === "stored_in_supabase" ? "Supabase Live" : "Resilient Store (ID: " + (selectedArea?.supabase_record_id?.slice(0, 8) || "local") + ")"}
-                </span>
+              {/* Inundation Stats Summary */}
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/10 text-center font-mono">
+                <div className="rounded-lg bg-slate-900/60 p-1.5">
+                  <div className="text-[9.5px] text-slate-400">Roads</div>
+                  <div className="text-[13px] font-bold text-white">{roads.length}</div>
+                </div>
+                <div className="rounded-lg bg-slate-900/60 p-1.5">
+                  <div className="text-[9.5px] text-slate-400">Submerged</div>
+                  <div className={`text-[13px] font-bold ${submergedRoads.length > 0 ? "text-red-400" : "text-emerald-400"}`}>
+                    {submergedRoads.length}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-slate-900/60 p-1.5">
+                  <div className="text-[9.5px] text-slate-400">Max Depth</div>
+                  <div className="text-[13px] font-bold text-cyan-300">{maxDepth.toFixed(2)}m</div>
+                </div>
               </div>
             </div>
 
             {/* Tabs for Intelligence Views */}
-            <div className="flex rounded-lg bg-slate-800/80 p-0.5 border border-white/10 text-[11.5px]">
+            <div className="flex rounded-lg bg-slate-800/80 p-0.5 border border-white/10 text-[11px]">
+              <button
+                onClick={() => setActiveTab("roads")}
+                className={`flex-1 rounded-md py-1 font-medium transition ${
+                  activeTab === "roads" ? "bg-cyan-500/20 text-cyan-300 font-semibold" : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Roads ({roads.length})
+              </button>
               <button
                 onClick={() => setActiveTab("overview")}
                 className={`flex-1 rounded-md py-1 font-medium transition ${
@@ -334,7 +457,7 @@ export default function DesktopDashboard() {
                   activeTab === "tactics" ? "bg-cyan-500/20 text-cyan-300 font-semibold" : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                Directives ({selectedArea?.recommendations?.length || 3})
+                Directives
               </button>
               <button
                 onClick={() => setActiveTab("features")}
@@ -346,7 +469,83 @@ export default function DesktopDashboard() {
               </button>
             </div>
 
-            {/* Tab 1: Featherless AI Executive Situation Analysis */}
+            {/* Tab 1: Detailed Inundated Roads & Corridors Table */}
+            {activeTab === "roads" && (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold text-white flex items-center gap-1.5">
+                    <Car size={13} className="text-cyan-400" />
+                    Vicinity Road Inundation
+                  </span>
+                  <span className="text-[10px] text-slate-400">Click road to focus</span>
+                </div>
+
+                <div className="space-y-2">
+                  {roads.map((road) => {
+                    const isSelected = selectedRoad?.id === road.id;
+                    return (
+                      <div
+                        key={road.id}
+                        onClick={() => setSelectedRoad(road)}
+                        className={`rounded-xl border p-3 transition cursor-pointer ${
+                          isSelected
+                            ? "border-cyan-400 bg-cyan-950/30 ring-1 ring-cyan-400"
+                            : "border-white/10 bg-slate-800/50 hover:bg-slate-800/80"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="text-[12.5px] font-bold text-white leading-tight">
+                              {road.road_name}
+                            </div>
+                            <div className="text-[10.5px] text-slate-400 mt-0.5">
+                              {road.road_type} • {road.length_km} km
+                            </div>
+                          </div>
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[9.5px] font-bold whitespace-nowrap ${road.badge_class}`}
+                          >
+                            {road.inundation_tier}
+                          </span>
+                        </div>
+
+                        {/* Water Depth Progress */}
+                        <div className="mt-2 space-y-1">
+                          <div className="flex justify-between text-[10.5px] font-mono">
+                            <span className="text-slate-400">Predicted Water Depth:</span>
+                            <span className="font-bold" style={{ color: road.gradient_color }}>
+                              {road.predicted_water_depth_m} m
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-slate-700/80 overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${Math.min(100, (road.predicted_water_depth_m / 2.0) * 100)}%`,
+                                backgroundColor: road.gradient_color,
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Traffic Status & Detour */}
+                        <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between text-[10.5px]">
+                          <span className="font-semibold" style={{ color: road.gradient_color }}>
+                            {road.traffic_status}
+                          </span>
+                          <span className="text-cyan-400 flex items-center gap-1 text-[10px]">
+                            <span>Locate</span>
+                            <ArrowUpRight size={11} />
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: Featherless AI Executive Situation Analysis */}
             {activeTab === "overview" && (
               <div className="rounded-xl border border-cyan-500/25 bg-cyan-950/20 p-3.5 space-y-2.5">
                 <div className="flex items-center gap-1.5 text-[11px] font-semibold text-cyan-300">
@@ -379,7 +578,7 @@ export default function DesktopDashboard() {
               </div>
             )}
 
-            {/* Tab 2: Tactical Directives */}
+            {/* Tab 3: Tactical Directives */}
             {activeTab === "tactics" && (
               <div className="rounded-xl border border-white/10 bg-slate-800/60 p-3.5 space-y-2.5">
                 <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400">
@@ -399,7 +598,7 @@ export default function DesktopDashboard() {
               </div>
             )}
 
-            {/* Tab 3: Exact 13 Features Breakdown */}
+            {/* Tab 4: Exact 13 Features Breakdown */}
             {activeTab === "features" && (
               <div className="rounded-xl border border-white/10 bg-slate-800/60 p-3 space-y-2 text-[11px]">
                 <span className="font-semibold text-white">13 Model Input Parameters</span>
@@ -448,7 +647,7 @@ export default function DesktopDashboard() {
               <span>Artifact: lgb_flood_model.txt</span>
             </div>
             <p className="text-[10px] text-slate-400">
-              Zero faking policy: True 13-feature LightGBM inference + real DEM + Featherless AI synthesis.
+              Authoritative 13-feature LightGBM model with dynamic road-level inundation mapping.
             </p>
           </div>
         </aside>
@@ -458,6 +657,11 @@ export default function DesktopDashboard() {
           <MapCanvas
             variant="dark"
             selectedArea={selectedArea}
+            selectedRoad={selectedRoad}
+            onRoadSelect={(r) => {
+              setSelectedRoad(r);
+              setActiveTab("roads");
+            }}
             onMapClick={handleMapClick}
             showReferenceRaster={showReferenceRaster}
             rainfall={rainfall}

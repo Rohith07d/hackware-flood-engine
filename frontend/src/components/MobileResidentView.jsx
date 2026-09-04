@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Search, LocateFixed, Sparkles, ShieldAlert, CheckCircle2, X } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Search, LocateFixed, Sparkles, ShieldAlert, CheckCircle2, Car, X, ChevronRight } from "lucide-react";
 import Logo from "./Logo.jsx";
 import MapCanvas from "./MapCanvas.jsx";
 import AlertHUD from "./AlertHUD.jsx";
-import { analyzeArea } from "../lib/api.js";
+import { analyzeArea, fetchSearchSuggestions } from "../lib/api.js";
 import { riskLevelMeta } from "../data/floodData.js";
 
 const NEARBY_AREAS = [
@@ -20,7 +20,9 @@ export default function MobileResidentView() {
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [showEvacuation, setShowEvacuation] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
   const [selectedArea, setSelectedArea] = useState(null);
+  const [selectedRoad, setSelectedRoad] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [rainfall, setRainfall] = useState(65);
 
@@ -35,6 +37,7 @@ export default function MobileResidentView() {
       });
       if (res && res.status === "success") {
         setSelectedArea(res);
+        setSelectedRoad(null);
         setSearchQuery(res.area_name);
       }
     } catch (err) {
@@ -47,6 +50,19 @@ export default function MobileResidentView() {
   useEffect(() => {
     runAnalysis({ location_name: "Gachibowli, Hyderabad", rainfall_mm: 65 });
   }, []);
+
+  // Fetch live autocomplete suggestions
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (searchQuery.trim().length > 0) {
+        const res = await fetchSearchSuggestions(searchQuery);
+        setSuggestions(res);
+      } else {
+        setSuggestions([]);
+      }
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleSearchSubmit = (e) => {
     e?.preventDefault();
@@ -70,6 +86,9 @@ export default function MobileResidentView() {
       : riskTier === "Moderate"
       ? "moderate"
       : "low";
+
+  const roads = selectedArea?.affected_roads || [];
+  const submergedRoads = roads.filter((r) => r.inundation_tier in { Critical: 1, Severe: 1 });
 
   const riskOverride = selectedArea
     ? {
@@ -95,7 +114,7 @@ export default function MobileResidentView() {
 
       {/* Scrollable content */}
       <div className="relative flex-1 overflow-hidden bg-slate-50">
-        <div className="thin-scroll h-full overflow-y-auto px-4 pt-3 pb-28">
+        <div className="thin-scroll h-full overflow-y-auto px-4 pt-3 pb-28 space-y-3">
           {/* Risk card via AlertHUD */}
           <AlertHUD
             variant="card"
@@ -103,11 +122,13 @@ export default function MobileResidentView() {
             onEvacuationClick={() => setShowEvacuation((v) => !v)}
           />
 
-          {/* Map Canvas */}
-          <div className="relative mt-3 h-[320px] overflow-hidden rounded-2xl shadow-card border border-black/10">
+          {/* Map Canvas with Road Gradients */}
+          <div className="relative h-[320px] overflow-hidden rounded-2xl shadow-card border border-black/10">
             <MapCanvas
               variant="light"
               selectedArea={selectedArea}
+              selectedRoad={selectedRoad}
+              onRoadSelect={(r) => setSelectedRoad(r)}
               rainfall={rainfall}
               isLoading={isLoading}
               onMapClick={handleMapClick}
@@ -122,9 +143,48 @@ export default function MobileResidentView() {
             </button>
           </div>
 
+          {/* Road Inundation Status Card */}
+          {roads.length > 0 && (
+            <div className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-[12.5px] font-bold text-slate-900">
+                  <Car size={15} className="text-cyan-600" />
+                  <span>Roads & Corridors ({roads.length})</span>
+                </div>
+                <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                  {submergedRoads.length} Submerged
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                {roads.slice(0, 4).map((road) => (
+                  <div
+                    key={road.id}
+                    onClick={() => setSelectedRoad(road)}
+                    className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-2 text-left cursor-pointer hover:bg-slate-100 transition"
+                  >
+                    <div className="min-w-0 flex-1 pr-2">
+                      <div className="truncate text-[12px] font-semibold text-slate-800">
+                        {road.road_name}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        {road.road_type} • Depth: <strong style={{ color: road.gradient_color }}>{road.predicted_water_depth_m}m</strong>
+                      </div>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold text-white ${road.badge_class}`}
+                    >
+                      {road.inundation_tier}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* AI Tactical Directive Card */}
           {selectedArea && (
-            <div className="mt-3 rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
+            <div className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
                 <ShieldAlert size={16} className="text-cyan-600" />
                 <h4 className="text-[13px] font-bold text-slate-800">
@@ -155,7 +215,7 @@ export default function MobileResidentView() {
         {/* Bottom Search Sheet */}
         <div
           className={`absolute inset-x-0 bottom-0 z-[500] rounded-t-2xl bg-white px-4 pb-4 pt-2 shadow-[0_-8px_24px_rgba(10,15,26,0.15)] border-t border-black/5 transition-[max-height] duration-300 ${
-            sheetExpanded ? "max-h-[75%]" : "max-h-[96px]"
+            sheetExpanded ? "max-h-[80%]" : "max-h-[96px]"
           }`}
         >
           <button
@@ -184,11 +244,12 @@ export default function MobileResidentView() {
             </button>
           </form>
 
+          {/* Autocomplete Suggestions or Quick Locations */}
           {sheetExpanded && (
-            <div className="mt-3 space-y-1 overflow-y-auto max-h-[220px]">
+            <div className="mt-3 space-y-1 overflow-y-auto max-h-[260px]">
               <div className="flex items-center justify-between px-1 pb-1">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  Quick Hyderabad Locations
+                  {suggestions.length > 0 ? "Matched Localities" : "Quick Hyderabad Locations"}
                 </p>
                 <button
                   onClick={() => setSheetExpanded(false)}
@@ -197,21 +258,27 @@ export default function MobileResidentView() {
                   <X size={14} />
                 </button>
               </div>
-              {NEARBY_AREAS.map((item) => (
+
+              {(suggestions.length > 0 ? suggestions : NEARBY_AREAS).map((item, idx) => (
                 <button
-                  key={item.name}
+                  key={idx}
                   onClick={() => {
                     runAnalysis({ location_name: item.name, rainfall_mm: rainfall });
                     setSheetExpanded(false);
                   }}
                   className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-100 active:bg-slate-200"
                 >
-                  <span className="text-[13px] font-medium text-slate-800">{item.name}</span>
+                  <div>
+                    <span className="text-[13px] font-medium text-slate-800">{item.name}</span>
+                    {item.category && (
+                      <div className="text-[10.5px] text-slate-400">{item.category}</div>
+                    )}
+                  </div>
                   <span
-                    className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold text-white"
-                    style={{ backgroundColor: riskLevelMeta[item.level]?.color || "#0ea5e9" }}
+                    className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white shrink-0"
+                    style={{ backgroundColor: riskLevelMeta[item.level || "moderate"]?.color || "#0ea5e9" }}
                   >
-                    {riskLevelMeta[item.level]?.label || "Moderate"}
+                    {riskLevelMeta[item.level || "moderate"]?.label || "Select"}
                   </span>
                 </button>
               ))}

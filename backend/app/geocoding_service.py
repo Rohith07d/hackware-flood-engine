@@ -167,6 +167,146 @@ HYDERABAD_LOCALITIES: Dict[str, Dict[str, Any]] = {
         "bounding_box": [17.4850, 78.4850, 17.5200, 78.5200],
         "category": "Northern Lake & Drainage Corridor",
     },
+    "mehdipatnam": {
+        "display_name": "Mehdipatnam, Hyderabad",
+        "latitude": 17.3916,
+        "longitude": 78.4398,
+        "bounding_box": [17.3750, 78.4200, 17.4100, 78.4600],
+        "category": "Southwest Transit Hub / Low-Lying Underpass Corridor",
+    },
+    "tolichowki": {
+        "display_name": "Tolichowki, Hyderabad",
+        "latitude": 17.4014,
+        "longitude": 78.4116,
+        "bounding_box": [17.3850, 78.3950, 17.4200, 78.4300],
+        "category": "Nadeem Colony / Historical Severe Inundation Catchment",
+    },
+    "somajiguda": {
+        "display_name": "Somajiguda, Hyderabad",
+        "latitude": 17.4256,
+        "longitude": 78.4583,
+        "bounding_box": [17.4120, 78.4450, 17.4400, 78.4720],
+        "category": "Raj Bhavan Road / Hussain Sagar Basin",
+    },
+    "panjagutta": {
+        "display_name": "Panjagutta, Hyderabad",
+        "latitude": 17.4265,
+        "longitude": 78.4502,
+        "bounding_box": [17.4150, 78.4380, 17.4400, 78.4650],
+        "category": "Central Commercial Flyover Node",
+    },
+    "ameerpet": {
+        "display_name": "Ameerpet, Hyderabad",
+        "latitude": 17.4375,
+        "longitude": 78.4482,
+        "bounding_box": [17.4250, 78.4350, 17.4500, 78.4620],
+        "category": "High-Density Commercial Underpass Hub",
+    },
+    "durgam cheruvu": {
+        "display_name": "Durgam Cheruvu (Secret Lake), Hyderabad",
+        "latitude": 17.4325,
+        "longitude": 78.3882,
+        "bounding_box": [17.4200, 78.3750, 17.4450, 78.4020],
+        "category": "Major Lake Catchment & Spillway",
+    },
+    "hussain sagar": {
+        "display_name": "Hussain Sagar Lake, Hyderabad",
+        "latitude": 17.4239,
+        "longitude": 78.4738,
+        "bounding_box": [17.4100, 78.4600, 17.4450, 78.4900],
+        "category": "Central Reservoir & Outflow Sluice Gates",
+    },
+    "attapur": {
+        "display_name": "Attapur, Hyderabad",
+        "latitude": 17.3712,
+        "longitude": 78.4304,
+        "bounding_box": [17.3550, 78.4150, 17.3900, 78.4480],
+        "category": "Musi River Southern Floodplain Corridor",
+    },
+    "lingampally": {
+        "display_name": "BHEL - Lingampally, Hyderabad",
+        "latitude": 17.4935,
+        "longitude": 78.3182,
+        "bounding_box": [17.4780, 78.3000, 17.5100, 78.3350],
+        "category": "Western Railway Hub / Industrial Catchment",
+    },
+    "chandanagar": {
+        "display_name": "Chandanagar, Hyderabad",
+        "latitude": 17.4932,
+        "longitude": 78.3392,
+        "bounding_box": [17.4780, 78.3220, 17.5100, 78.3550],
+        "category": "Gangaram Cheruvu Outflow Catchment",
+    },
+    "malkajgiri": {
+        "display_name": "Malkajgiri, Hyderabad",
+        "latitude": 17.4526,
+        "longitude": 78.5327,
+        "bounding_box": [17.4380, 78.5150, 17.4700, 78.5500],
+        "category": "Banda Cheruvu Urban Inundation Sector",
+    },
+    "shamshabad": {
+        "display_name": "Shamshabad (Airport Zone), Hyderabad",
+        "latitude": 17.2543,
+        "longitude": 78.4312,
+        "bounding_box": [17.2300, 78.4000, 17.2800, 78.4600],
+        "category": "Southern Plateau / Airport Drainage Corridor",
+    },
+    "kacheguda": {
+        "display_name": "Kacheguda, Hyderabad",
+        "latitude": 17.3907,
+        "longitude": 78.4983,
+        "bounding_box": [17.3780, 78.4850, 17.4050, 78.5120],
+        "category": "Railway Junction & Musi Outflow Lane",
+    },
+    "sanathnagar": {
+        "display_name": "Sanathnagar, Hyderabad",
+        "latitude": 17.4589,
+        "longitude": 78.4410,
+        "bounding_box": [17.4450, 78.4280, 17.4750, 78.4550],
+        "category": "Industrial Catchment & Storm Drain Network",
+    },
+    "balanagar": {
+        "display_name": "Balanagar, Hyderabad",
+        "latitude": 17.4728,
+        "longitude": 78.4450,
+        "bounding_box": [17.4580, 78.4300, 17.4900, 78.4600],
+        "category": "Northern Industrial Corridor Underpass",
+    },
+    "nagole": {
+        "display_name": "Nagole, Hyderabad",
+        "latitude": 17.3742,
+        "longitude": 78.5627,
+        "bounding_box": [17.3600, 78.5450, 17.3900, 78.5800],
+        "category": "Eastern Musi River Confluence Plains",
+    },
+    "cyber towers": {
+        "display_name": "Cyber Towers (HITEC City), Hyderabad",
+        "latitude": 17.4504,
+        "longitude": 78.3808,
+        "bounding_box": [17.4380, 78.3680, 17.4620, 78.3950],
+        "category": "Core IT Landmark / Shilparamam Junction",
+    },
+    "jubilee hills road 36": {
+        "display_name": "Jubilee Hills Checkpost & Road 36, Hyderabad",
+        "latitude": 17.4312,
+        "longitude": 78.4118,
+        "bounding_box": [17.4180, 78.3980, 17.4450, 78.4250],
+        "category": "Elevated Commercial Arterial",
+    },
+    "chaderghat": {
+        "display_name": "Chaderghat Causeway, Hyderabad",
+        "latitude": 17.3820,
+        "longitude": 78.4920,
+        "bounding_box": [17.3700, 78.4800, 17.3950, 78.5050],
+        "category": "Active River Causeway Submersion Point",
+    },
+    "moosarambagh": {
+        "display_name": "Moosarambagh Bridge, Hyderabad",
+        "latitude": 17.3765,
+        "longitude": 78.5065,
+        "bounding_box": [17.3650, 78.4950, 17.3900, 78.5200],
+        "category": "Low Causeway Floodplain / Routine Closure Point",
+    },
 }
 
 
@@ -181,6 +321,45 @@ def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) ->
 
 
 class GeocodingService:
+    @staticmethod
+    def search_suggestions(query: str, limit: int = 8) -> List[Dict[str, Any]]:
+        """
+        Return fast typeahead autocomplete suggestions for Hyderabad localities and landmarks.
+        """
+        q = (query or "").strip().lower()
+        if not q:
+            popular_keys = [
+                "gachibowli", "begumpet", "musi river basin", "ghatkesar",
+                "madhapur", "hitec city", "kukatpally", "charminar"
+            ]
+            return [
+                {
+                    "name": HYDERABAD_LOCALITIES[k]["display_name"],
+                    "category": HYDERABAD_LOCALITIES[k]["category"],
+                    "latitude": HYDERABAD_LOCALITIES[k]["latitude"],
+                    "longitude": HYDERABAD_LOCALITIES[k]["longitude"],
+                }
+                for k in popular_keys if k in HYDERABAD_LOCALITIES
+            ]
+
+        results = []
+        seen_names = set()
+        for key, entry in HYDERABAD_LOCALITIES.items():
+            disp = entry["display_name"]
+            cat = entry["category"]
+            if q in key or q in disp.lower() or q in cat.lower():
+                if disp not in seen_names:
+                    seen_names.add(disp)
+                    results.append({
+                        "name": disp,
+                        "category": cat,
+                        "latitude": entry["latitude"],
+                        "longitude": entry["longitude"],
+                    })
+            if len(results) >= limit:
+                break
+        return results
+
     @staticmethod
     def resolve_location(
         location_name: Optional[str] = None,

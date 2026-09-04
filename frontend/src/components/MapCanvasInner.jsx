@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 
 // Risk tier colors for dynamic area styling
@@ -28,6 +28,8 @@ const DEFAULT_EVACUATION_ROUTE = [
 export default function MapCanvasInner({
   variant = "dark",
   selectedArea = null,
+  selectedRoad = null,
+  onRoadSelect = null,
   center = null,
   zoom = 13.5,
   onMapClick = null,
@@ -41,13 +43,17 @@ export default function MapCanvasInner({
   const containerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const areaMarkerRef = useRef(null);
-  const areaHaloRef = useRef(null);
-  const areaBoundsRef = useRef(null);
+  const roadLayersRef = useRef([]);
+  const zoneLayersRef = useRef([]);
   const evacuationLayerRef = useRef(null);
   const rasterLayerRef = useRef(null);
   const clickCallbackRef = useRef(onMapClick);
+  const onRoadSelectRef = useRef(onRoadSelect);
+
+  const [activeFilter, setActiveFilter] = useState("all"); // "all" | "submerged" | "passable"
 
   clickCallbackRef.current = onMapClick;
+  onRoadSelectRef.current = onRoadSelect;
 
   // Robust coordinate resolution preventing any NaN propagation
   const rawLat = selectedArea?.coordinates?.latitude ?? selectedArea?.latitude ?? center?.[0];
@@ -63,11 +69,12 @@ export default function MapCanvasInner({
   const riskTier = selectedArea?.risk_tier || "Moderate";
   const rawScore = Number(selectedArea?.susceptibility_score);
   const score = Number.isFinite(rawScore) ? rawScore : 0.0;
-  const bbox = selectedArea?.bounding_box;
-
   const primaryColor = RISK_COLORS[riskTier] || "#3b82f6";
 
-  // Initialize Map
+  const roads = selectedArea?.affected_roads || [];
+  const zones = selectedArea?.vicinity_zones || [];
+
+  // 1. Initialize Leaflet Map Instance
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -135,7 +142,7 @@ export default function MapCanvasInner({
     };
   }, []);
 
-  // Handle Evacuation Route
+  // 2. Handle Evacuation Route
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -158,7 +165,7 @@ export default function MapCanvasInner({
     }
   }, [showEvacuation]);
 
-  // Handle Reference Raster Overlay toggle
+  // 3. Handle Reference Raster Overlay toggle
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
@@ -177,60 +184,127 @@ export default function MapCanvasInner({
     }
   }, [showReferenceRaster]);
 
-  // Update Selected Area Marker & Highlight Layer
+  // 4. Render Road Inundation Polylines & Vicinity Micro-Zones
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    // Clean up previous area highlights
+    // Clear old road and zone layers
+    roadLayersRef.current.forEach((layer) => layer.remove());
+    roadLayersRef.current = [];
+
+    zoneLayersRef.current.forEach((layer) => layer.remove());
+    zoneLayersRef.current = [];
+
     if (areaMarkerRef.current) {
       areaMarkerRef.current.remove();
       areaMarkerRef.current = null;
     }
-    if (areaHaloRef.current) {
-      areaHaloRef.current.remove();
-      areaHaloRef.current = null;
-    }
-    if (areaBoundsRef.current) {
-      areaBoundsRef.current.remove();
-      areaBoundsRef.current = null;
-    }
 
-    // Safety guard: only execute area flyTo and highlight if selectedArea is provided and valid
     if (!selectedArea || !Number.isFinite(lat) || !Number.isFinite(lon)) {
       return;
     }
 
-    // Fly camera smoothly to selected area
-    map.flyTo([lat, lon], 14, { duration: 1.0 });
+    // Camera fly to selected area
+    map.flyTo([lat, lon], 14, { duration: 0.8 });
 
-    // 1. Highlight bounding box if available
-    if (bbox && Array.isArray(bbox) && bbox.length === 4 && bbox.every((val) => Number.isFinite(Number(val)))) {
-      const boundsLatLng = [
-        [Number(bbox[0]), Number(bbox[1])],
-        [Number(bbox[2]), Number(bbox[3])],
-      ];
-      areaBoundsRef.current = L.rectangle(boundsLatLng, {
-        color: primaryColor,
-        weight: 2,
+    // A. Render Vicinity Micro-Zones (Low-lying basins, nala corridors)
+    zones.forEach((z) => {
+      const polygonLayer = L.polygon(z.polygon, {
+        color: z.gradient_color,
+        weight: 1.5,
         dashArray: "4 4",
-        fillColor: primaryColor,
-        fillOpacity: 0.12,
-        zIndex: 10,
+        fillColor: z.gradient_color,
+        fillOpacity: z.fill_opacity || 0.18,
+        zIndex: 5,
       }).addTo(map);
-    }
 
-    // 2. Pulsing Radial Halo
-    areaHaloRef.current = L.circle([lat, lon], {
-      radius: 900,
-      color: primaryColor,
-      weight: 1.5,
-      fillColor: primaryColor,
-      fillOpacity: Math.min(0.35, 0.10 + score * 0.25),
-      zIndex: 11,
-    }).addTo(map);
+      polygonLayer.bindTooltip(
+        `<div class="text-xs">
+          <b>${z.name}</b><br/>
+          <span style="color:${z.gradient_color}">● ${z.severity} (${z.avg_depth_m}m avg depth)</span><br/>
+          <span class="text-slate-500">${z.type}</span>
+        </div>`,
+        { sticky: true }
+      );
+      zoneLayersRef.current.push(polygonLayer);
+    });
 
-    // 3. Focal Point Marker
+    // B. Render Road Corridors with Gradients
+    roads.forEach((r) => {
+      const isSubmerged = r.inundation_tier in { Critical: 1, Severe: 1 };
+      const isPassable = r.inundation_tier === "Passable";
+
+      // Apply filter
+      if (activeFilter === "submerged" && !isSubmerged) return;
+      if (activeFilter === "passable" && !isPassable) return;
+
+      const isRoadSelected = selectedRoad?.id === r.id;
+
+      // Glow underlay for critical roads or selected road
+      if (r.is_critical || isRoadSelected) {
+        const glowLayer = L.polyline(r.coordinates, {
+          color: isRoadSelected ? "#38bdf8" : r.gradient_color,
+          weight: isRoadSelected ? 10 : 8,
+          opacity: 0.35,
+          lineCap: "round",
+          lineJoin: "round",
+          zIndex: 8,
+        }).addTo(map);
+        roadLayersRef.current.push(glowLayer);
+      }
+
+      // Main Road Polyline
+      const polyline = L.polyline(r.coordinates, {
+        color: isRoadSelected ? "#38bdf8" : r.gradient_color,
+        weight: isRoadSelected ? 6 : (r.is_critical ? 5 : 4),
+        opacity: isRoadSelected ? 1.0 : (isPassable ? 0.85 : 0.98),
+        dashArray: r.inundation_tier === "Critical" ? "6 3" : undefined,
+        lineCap: "round",
+        lineJoin: "round",
+        zIndex: isRoadSelected ? 15 : (r.is_critical ? 12 : 9),
+      }).addTo(map);
+
+      // Popup Content
+      const popupHtml = `
+        <div style="font-family: inherit; min-width: 220px; padding: 2px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 4px;">
+            <b style="font-size: 12px; color: #0f172a;">${r.road_name}</b>
+            <span style="background:${r.gradient_color}; color:#fff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;">
+              ${r.inundation_tier}
+            </span>
+          </div>
+          <div style="font-size: 11px; color: #475569; margin-bottom: 3px;">
+            <b>Type:</b> ${r.road_type} (${r.length_km} km)
+          </div>
+          <div style="font-size: 11px; color: #475569; margin-bottom: 3px;">
+            <b>Water Depth:</b> <span style="font-weight:700; color:${r.gradient_color};">${r.predicted_water_depth_m} m</span>
+          </div>
+          <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
+            <b>Status:</b> <span style="font-weight:700; color:${r.gradient_color};">${r.traffic_status}</span>
+          </div>
+          <div style="font-size: 10px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 4px; font-style: italic;">
+            ${r.advisory}
+          </div>
+        </div>
+      `;
+
+      polyline.bindTooltip(
+        `<b>${r.road_name}</b>: ${r.predicted_water_depth_m}m (${r.inundation_tier})`,
+        { sticky: true }
+      );
+      polyline.bindPopup(popupHtml);
+
+      polyline.on("click", () => {
+        if (onRoadSelectRef.current) {
+          onRoadSelectRef.current(r);
+        }
+      });
+
+      roadLayersRef.current.push(polyline);
+    });
+
+    // C. Area Central Focal Marker
     const customIcon = L.divIcon({
       className: "custom-area-marker",
       html: `
@@ -239,40 +313,55 @@ export default function MapCanvasInner({
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 32px;
-          height: 32px;
+          width: 28px;
+          height: 28px;
         ">
           <div style="
             position: absolute;
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             background-color: ${primaryColor};
-            opacity: 0.4;
-            animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+            opacity: 0.35;
           "></div>
           <div style="
             position: relative;
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
             background-color: ${primaryColor};
-            border: 3px solid #ffffff;
-            box-shadow: 0 0 12px ${primaryColor};
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 10px ${primaryColor};
           "></div>
         </div>
       `,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16],
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
     });
 
-    areaMarkerRef.current = L.marker([lat, lon], { icon: customIcon, zIndexOffset: 1000 })
+    areaMarkerRef.current = L.marker([lat, lon], { icon: customIcon, zIndexOffset: 500 })
       .addTo(map)
       .bindTooltip(
         `<b>${areaName}</b><br/>LightGBM Susceptibility: ${(score * 100).toFixed(1)}% (${riskTier})`,
-        { permanent: false, direction: "top", offset: [0, -12] }
+        { permanent: false, direction: "top", offset: [0, -10] }
       );
-  }, [lat, lon, areaName, riskTier, score, primaryColor, bbox, selectedArea]);
+  }, [lat, lon, areaName, riskTier, score, primaryColor, selectedArea, selectedRoad, activeFilter]);
+
+  // Handle zooming directly to selected road
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !selectedRoad?.coordinates || selectedRoad.coordinates.length === 0) return;
+
+    try {
+      const bounds = L.latLngBounds(selectedRoad.coordinates);
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+    } catch (e) {
+      // safe fallback
+    }
+  }, [selectedRoad]);
+
+  const submergedCount = roads.filter((r) => r.inundation_tier in { Critical: 1, Severe: 1 }).length;
+  const passableCount = roads.filter((r) => r.inundation_tier === "Passable").length;
 
   return (
     <div className={`relative h-full w-full overflow-hidden ${className}`}>
@@ -283,20 +372,52 @@ export default function MapCanvasInner({
       />
 
       {/* Map Interactive Guide */}
-      <div className="pointer-events-none absolute top-4 left-4 z-[400] flex items-center gap-2 rounded-lg border border-white/10 bg-slate-900/85 px-3 py-1.5 shadow-md backdrop-blur-md">
+      <div className="pointer-events-none absolute top-3 left-4 z-[400] flex items-center gap-2 rounded-lg border border-white/10 bg-slate-900/85 px-3 py-1.5 shadow-md backdrop-blur-md">
         <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
         <span className="text-[11.5px] font-medium text-slate-300">
           Click map anywhere to analyze localized flood risk
         </span>
       </div>
 
+      {/* Road Filter Toggle Chips */}
+      {roads.length > 0 && (
+        <div className="absolute top-3 right-4 z-[400] flex items-center gap-1 rounded-xl border border-white/15 bg-slate-900/90 p-1 shadow-xl backdrop-blur-md text-[11px]">
+          <button
+            onClick={() => setActiveFilter("all")}
+            className={`rounded-lg px-2.5 py-1 font-medium transition ${
+              activeFilter === "all" ? "bg-cyan-500 text-slate-950 font-semibold" : "text-slate-300 hover:bg-white/10"
+            }`}
+          >
+            All Roads ({roads.length})
+          </button>
+          <button
+            onClick={() => setActiveFilter("submerged")}
+            className={`rounded-lg px-2.5 py-1 font-medium transition flex items-center gap-1 ${
+              activeFilter === "submerged" ? "bg-red-500 text-white font-semibold" : "text-slate-300 hover:bg-white/10"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+            Submerged ({submergedCount})
+          </button>
+          <button
+            onClick={() => setActiveFilter("passable")}
+            className={`rounded-lg px-2.5 py-1 font-medium transition flex items-center gap-1 ${
+              activeFilter === "passable" ? "bg-emerald-500 text-white font-semibold" : "text-slate-300 hover:bg-white/10"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            Passable ({passableCount})
+          </button>
+        </div>
+      )}
+
       {/* Loading Overlay */}
       {isLoading && (
-        <div className="pointer-events-none absolute inset-0 z-[500] flex items-center justify-center bg-slate-950/40 backdrop-blur-[2px]">
+        <div className="pointer-events-none absolute inset-0 z-[500] flex items-center justify-center bg-slate-950/45 backdrop-blur-[2px]">
           <div className="flex items-center gap-3 rounded-xl border border-cyan-500/30 bg-slate-900/95 px-4 py-2.5 shadow-2xl">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
             <span className="text-[12.5px] font-medium text-slate-200">
-              Featherless AI Orchestrating Analysis...
+              Featherless AI Modeling Road Inundation...
             </span>
           </div>
         </div>
@@ -317,6 +438,36 @@ export default function MapCanvasInner({
           </div>
         </div>
       )}
+
+      {/* Road Inundation Gradient Legend (Bottom Right) */}
+      <div className="absolute bottom-5 right-4 z-[400] rounded-xl border border-white/15 bg-slate-900/90 p-2.5 shadow-xl backdrop-blur-md text-[10.5px]">
+        <div className="font-semibold text-white mb-1.5 text-[11px] flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-cyan-400" />
+          Road Flood Gradients
+        </div>
+        <div className="space-y-1 text-slate-300">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-5 rounded bg-red-500 shadow-sm" />
+            <span>Critical Submersion (&ge;0.7m)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-5 rounded bg-orange-500 shadow-sm" />
+            <span>Severe Waterlogging (0.4–0.7m)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-5 rounded bg-amber-500 shadow-sm" />
+            <span>Moderate Caution (0.2–0.4m)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-5 rounded bg-yellow-500 shadow-sm" />
+            <span>Minor Ponding (0.05–0.2m)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-5 rounded bg-emerald-500 shadow-sm" />
+            <span>Passable / Clear (&lt;0.05m)</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -21,7 +21,9 @@ from .schemas import (
     HazardMapMetadataResponse,
     AreaAnalysisRequest,
     AreaAnalysisResponse,
+    SearchAreaRequest,
 )
+from .geocoding_service import geocoding_service
 from .ml_predictor import FEATURE_NAMES, LightGBMFloodPredictor, predictor
 from .terrain_service import terrain_service
 from .rainfall_service import load_historical_rainfall_series, BASELINE_RAIN_SUMMARY
@@ -111,6 +113,40 @@ def analyze_area_endpoint(request: AreaAnalysisRequest) -> AreaAnalysisResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Area flood analysis failed: {str(exc)}"
+        )
+
+
+@app.get("/search-suggestions", tags=["AI Analysis"])
+def search_suggestions_endpoint(
+    q: str = Query(default="", description="Query string for locality typeahead")
+) -> Dict[str, Any]:
+    """Fast typeahead autocomplete suggestions for Hyderabad localities, IT corridors, and landmarks."""
+    suggestions = geocoding_service.search_suggestions(q, limit=8)
+    return {"status": "success", "query": q, "suggestions": suggestions}
+
+
+@app.post("/search-area", response_model=AreaAnalysisResponse, tags=["AI Analysis"])
+def search_area_endpoint(request: SearchAreaRequest) -> AreaAnalysisResponse:
+    """
+    Intelligent location search powered by Featherless AI:
+    Parses natural language queries (e.g. 'Begumpet under 90mm rain' or 'Cyber Towers IT corridor'),
+    resolves the target Hyderabad locality, and executes the complete area and road inundation analysis.
+    """
+    try:
+        interpreted = featherless_agent.interpret_search_query(request.query)
+        target_rain = request.rainfall_mm if request.rainfall_mm is not None else interpreted.get("rainfall_mm", 65.0)
+
+        result = featherless_agent.analyze_area(
+            location_name=interpreted.get("location_name"),
+            latitude=interpreted.get("latitude"),
+            longitude=interpreted.get("longitude"),
+            rainfall_mm=target_rain,
+        )
+        return AreaAnalysisResponse(**result)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Intelligent area search failed: {str(exc)}"
         )
 
 

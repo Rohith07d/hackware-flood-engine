@@ -153,7 +153,15 @@ class AreaAnalysisResponse(BaseModel):
     ai_summary: str
     recommendations: List[str]
     ai_source: str
+    affected_roads: Optional[List[Dict[str, Any]]] = None
+    vicinity_zones: Optional[List[Dict[str, Any]]] = None
     supabase_record_id: Optional[str] = None
     storage_status: Optional[str] = None
     timestamp: Optional[str] = None
     orchestration_log: Optional[List[Dict[str, Any]]] = None
+
+
+class SearchAreaRequest(BaseModel):
+    query: str = Field(description="Search text or natural language query, e.g. 'Begumpet under 90mm rain'")
+    rainfall_mm: Optional[float] = Field(default=None, description="Optional override rainfall in mm")
+

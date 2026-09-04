@@ -9,6 +9,7 @@ from .terrain_service import terrain_service
 from .rainfall_service import get_rainfall_scenario_features
 from .ml_predictor import ml_predictor, FEATURE_NAMES
 from .supabase_service import supabase_service
+from .road_network_service import road_network_service
 
 
 FEATHERLESS_TOOLS = [
@@ -250,7 +251,34 @@ class FeatherlessAgent:
             }
         })
 
-        # Step 5: Featherless AI Synthesis (Reasoning, Summary & Tactical Directives)
+        # Step 5: Road-Level Inundation & Vicinity Vulnerability Analysis
+        affected_roads = road_network_service.extract_vicinity_roads(
+            lat=resolved_lat,
+            lon=resolved_lon,
+            location_name=resolved_name,
+            rainfall_mm=rainfall_mm,
+            susceptibility_score=susceptibility_score,
+            terrain_features=features_13
+        )
+        vicinity_zones = road_network_service.extract_vicinity_zones(
+            lat=resolved_lat,
+            lon=resolved_lon,
+            location_name=resolved_name,
+            susceptibility_score=susceptibility_score,
+            rainfall_mm=rainfall_mm
+        )
+        critical_roads_count = sum(1 for r in affected_roads if r["inundation_tier"] in ("Critical", "Severe"))
+        orchestration_log.append({
+            "tool": "extract_vicinity_roads",
+            "status": "success",
+            "output": {
+                "total_roads_monitored": len(affected_roads),
+                "critical_submerged_roads": critical_roads_count,
+                "vicinity_zones_modeled": len(vicinity_zones)
+            }
+        })
+
+        # Step 6: Featherless AI Synthesis (Reasoning, Summary & Tactical Directives)
         ai_summary, recommendations, ai_source = self._synthesize_with_featherless(
             location_name=resolved_name,
             lat=resolved_lat,
@@ -259,7 +287,8 @@ class FeatherlessAgent:
             susceptibility_score=susceptibility_score,
             risk_tier=risk_tier,
             features=features_13,
-            drivers=drivers
+            drivers=drivers,
+            affected_roads=affected_roads
         )
         orchestration_log.append({
             "step": "ai_synthesis",
@@ -267,7 +296,7 @@ class FeatherlessAgent:
             "status": "success"
         })
 
-        # Step 6: Supabase Persistence
+        # Step 7: Supabase Persistence
         supabase_record = supabase_service.save_area_prediction(
             area_name=resolved_name,
             lat=resolved_lat,
@@ -302,6 +331,8 @@ class FeatherlessAgent:
             "hazard_level": lgb_result.get("hazard_level", "Moderate"),
             "features_13": features_13,
             "drivers": drivers,
+            "affected_roads": affected_roads,
+            "vicinity_zones": vicinity_zones,
             "ai_summary": ai_summary,
             "recommendations": recommendations,
             "ai_source": ai_source,
@@ -320,24 +351,32 @@ class FeatherlessAgent:
         susceptibility_score: float,
         risk_tier: str,
         features: Dict[str, float],
-        drivers: List[Dict[str, Any]]
+        drivers: List[Dict[str, Any]],
+        affected_roads: Optional[List[Dict[str, Any]]] = None
     ) -> Tuple[str, List[str], str]:
         """
         Call Featherless AI to generate the executive flood risk analysis
-        and tactical recommendations for the selected area.
+        and tactical recommendations for the selected area and its roads.
         """
         if self.is_configured and self.client:
             try:
                 system_prompt = (
                     "You are the Featherless AI Flood Risk Strategist for Hyderabad. "
-                    "Analyze the given area flood prediction calculated by the authoritative LightGBM hydrological model. "
-                    "Provide a crisp, professional executive summary explaining why this area is or isn't vulnerable "
-                    "based on its specific elevation, topographic wetness (TWI), stream proximity, and rainfall intensity. "
-                    "Also provide 3-4 specific tactical emergency recommendations for municipal authorities and citizens. "
+                    "Analyze the given area flood prediction calculated by the authoritative LightGBM hydrological model "
+                    "and the road-level inundation status in its vicinity. "
+                    "Provide a crisp, professional executive summary explaining which specific roads or underpasses are inundated "
+                    "or safe, based on terrain elevation, TWI, stream proximity, and rainfall intensity. "
+                    "Also provide 3-4 specific tactical emergency recommendations for municipal traffic diversion, pumping, and citizens. "
                     "Respond with a strict JSON object having keys 'summary' (string) and 'recommendations' (array of strings)."
                 )
 
                 driver_str = "; ".join([f"{d['factor']}: {d['detail']}" for d in drivers])
+                road_lines = []
+                if affected_roads:
+                    for r in affected_roads[:4]:
+                        road_lines.append(f"- {r['road_name']} ({r['road_type']}): {r['predicted_water_depth_m']}m water depth ({r['traffic_status']})")
+                roads_str = "\n".join(road_lines) if road_lines else "Standard arterial corridors."
+
                 user_content = (
                     f"Selected Area: {location_name}\n"
                     f"Coordinates: {lat:.4f}, {lon:.4f}\n"
@@ -345,6 +384,7 @@ class FeatherlessAgent:
                     f"Authoritative LightGBM Susceptibility: {susceptibility_score:.4f} ({risk_tier} Risk)\n"
                     f"Terrain Metrics: Elevation {features['elevation']}m, Slope {features['slope']}°, TWI {features['twi']}, Dist to stream {features['dist_to_stream']}m\n"
                     f"Key Contributing Factors: {driver_str}\n"
+                    f"Monitored Road Corridors in Vicinity:\n{roads_str}\n"
                 )
 
                 resp = self.client.chat.completions.create(
@@ -482,12 +522,72 @@ class FeatherlessAgent:
 #### Action Directives:
 """ + "\n".join([f"- {r}" for r in recs])
 
+    def interpret_search_query(self, query: str) -> Dict[str, Any]:
+        """
+        Parse complex or natural language search queries using Featherless AI
+        to extract the intended Hyderabad locality, coordinates, and implied rainfall scenario.
+        """
+        clean_q = (query or "").strip()
+        if not clean_q:
+            return {"location_name": "Gachibowli, Hyderabad", "rainfall_mm": 65.0}
+
+        # First check fast local catalog match
+        resolved = geocoding_service.resolve_location(clean_q)
+        default_rainfall = 65.0
+
+        # Extract number if query specifies mm or rainfall
+        import re
+        rain_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:mm|milli)", clean_q.lower())
+        if rain_match:
+            try:
+                default_rainfall = float(rain_match.group(1))
+            except Exception:
+                pass
+
+        if self.is_configured and self.client and len(clean_q) > 15:
+            try:
+                prompt = (
+                    "You are a Hyderabad Geospatial Entity Recognizer. "
+                    "Given the user's flood query, identify: "
+                    "1. 'target_locality': the best matching Hyderabad locality/area name. "
+                    "2. 'rainfall_mm': precipitation amount in mm if mentioned or implied (default 65.0). "
+                    "Respond with strict JSON with keys 'target_locality' and 'rainfall_mm'."
+                )
+                resp = self.client.chat.completions.create(
+                    model=settings.featherless_model,
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": clean_q}
+                    ],
+                    max_tokens=150,
+                    temperature=0.1
+                )
+                txt = resp.choices[0].message.content.strip()
+                match = re.search(r"\{[\s\S]*?\}", txt)
+                if match:
+                    parsed = json.loads(match.group(0))
+                    target = parsed.get("target_locality", "")
+                    if target and len(target) > 2:
+                        res = geocoding_service.resolve_location(target)
+                        rain = float(parsed.get("rainfall_mm", default_rainfall))
+                        return {
+                            "location_name": res["location_name"],
+                            "latitude": res["latitude"],
+                            "longitude": res["longitude"],
+                            "rainfall_mm": rain,
+                            "ai_interpreted": True
+                        }
+            except Exception as e:
+                print(f"[FeatherlessAgent] Query interpretation exception: {e}")
+
         return {
-            "advisory_title": f"FLOOD {sev.upper()} ADVISORY: {loc}",
-            "advisory_markdown": markdown.strip(),
-            "recommended_actions": recs,
-            "source": "featherless-orchestrator"
+            "location_name": resolved["location_name"],
+            "latitude": resolved["latitude"],
+            "longitude": resolved["longitude"],
+            "rainfall_mm": default_rainfall,
+            "ai_interpreted": False
         }
 
 
 featherless_agent = FeatherlessAgent()
+
