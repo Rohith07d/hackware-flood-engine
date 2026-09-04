@@ -522,6 +522,12 @@ class FeatherlessAgent:
 #### Action Directives:
 """ + "\n".join([f"- {r}" for r in recs])
 
+        return {
+            "advisory_title": f"⚠️ FLOOD {sev.upper()} ADVISORY: {loc.upper()}",
+            "advisory_markdown": markdown,
+            "recommended_actions": recs
+        }
+
     def interpret_search_query(self, query: str) -> Dict[str, Any]:
         """
         Parse complex or natural language search queries using Featherless AI
