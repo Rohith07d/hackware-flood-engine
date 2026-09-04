@@ -1,0 +1,5 @@
+# Ensure LightGBM models preserve exact LF line endings across platforms
+backend/models/*.txt text eol=lf
+*.npz binary
+*.png binary
+*.tif binary

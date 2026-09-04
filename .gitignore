@@ -7,3 +7,5 @@ venv/
 .env
 .next/
 *.tif
+!backend/models/lgb_flood_model.txt
+
