@@ -163,133 +163,47 @@ export default function MapCanvasInner({
     return list;
   }, [highRiskCoordinates, highRiskCoordinate, marker, center]);
 
-  // Apply spatial filtering on local roads GeoJSON with dynamic vicinity street synthesis
+  // Apply dynamic spatial filtering on real local roads GeoJSON
   const evaluateRoadFlooding = useCallback(
     (rawGeojson) => {
       if (!rawGeojson || !rawGeojson.features) return null;
 
       const riskPoints = getRiskCoordinates();
-      // Radius expands with horizon slider (300m - 750m)
-      const floodThresholdMeters = 300 + (horizon / 100) * 450;
-      const targetPoint = riskPoints[0] || { lat: CENTER[0], lng: CENTER[1] };
+      // Radius expands with horizon slider (350m - 850m)
+      const floodThresholdMeters = 350 + (horizon / 100) * 500;
+      // Degrees bounding box buffer for fast polyline pre-filtering (~1.2km)
+      const degBuffer = (floodThresholdMeters + 300) / 111320.0;
 
-      let features = [...rawGeojson.features];
-
-      // Check distance to the nearest mapped road feature
-      let minDistanceToAnyRoad = Infinity;
-      for (const feat of features) {
-        const coords = feat.geometry?.coordinates;
-        if (coords && feat.geometry?.type === "LineString") {
-          const d = minDistanceToPolylineMeters(targetPoint.lat, targetPoint.lng, coords);
-          if (d < minDistanceToAnyRoad) minDistanceToAnyRoad = d;
-        }
-      }
-
-      // If the searched location is in an area without pre-mapped road corridors (>650m),
-      // dynamically synthesize a local vicinity street grid so roads are ALWAYS visible!
-      if (minDistanceToAnyRoad > 650) {
-        const tLat = targetPoint.lat;
-        const tLng = targetPoint.lng;
-        const locName = marker?.label || "Local Vicinity";
-        const degLat = 0.007; // ~770m
-        const degLng = 0.007;
-
-        const syntheticLocalRoads = [
-          {
-            type: "Feature",
-            id: `synth_main_${tLat.toFixed(3)}_${tLng.toFixed(3)}`,
-            properties: {
-              id: `synth_main`,
-              name: `${locName} Main Corridor`,
-              highway: "primary",
-              lanes: 4,
-              locality: locName,
-            },
-            geometry: {
-              type: "LineString",
-              coordinates: [
-                [tLng - degLng, tLat - degLat * 0.3],
-                [tLng - degLng * 0.3, tLat],
-                [tLng, tLat],
-                [tLng + degLng * 0.4, tLat + degLat * 0.2],
-                [tLng + degLng, tLat + degLat * 0.5],
-              ],
-            },
-          },
-          {
-            type: "Feature",
-            id: `synth_cross_${tLat.toFixed(3)}_${tLng.toFixed(3)}`,
-            properties: {
-              id: `synth_cross`,
-              name: `${locName} Central Cross Link`,
-              highway: "secondary",
-              lanes: 4,
-              locality: locName,
-            },
-            geometry: {
-              type: "LineString",
-              coordinates: [
-                [tLng - degLng * 0.2, tLat - degLat],
-                [tLng - degLng * 0.1, tLat - degLat * 0.4],
-                [tLng, tLat],
-                [tLng + degLng * 0.1, tLat + degLat * 0.5],
-                [tLng + degLng * 0.3, tLat + degLat],
-              ],
-            },
-          },
-          {
-            type: "Feature",
-            id: `synth_drain_causeway_${tLat.toFixed(3)}_${tLng.toFixed(3)}`,
-            properties: {
-              id: `synth_drain_causeway`,
-              name: `${locName} Stormwater Causeway`,
-              highway: "secondary",
-              lanes: 2,
-              locality: locName,
-              is_underpass: true,
-            },
-            geometry: {
-              type: "LineString",
-              coordinates: [
-                [tLng - degLng * 0.8, tLat - degLat * 0.6],
-                [tLng - degLng * 0.2, tLat - degLat * 0.2],
-                [tLng + degLng * 0.2, tLat - degLat * 0.1],
-                [tLng + degLng * 0.7, tLat - degLat * 0.3],
-              ],
-            },
-          },
-          {
-            type: "Feature",
-            id: `synth_access_${tLat.toFixed(3)}_${tLng.toFixed(3)}`,
-            properties: {
-              id: `synth_access`,
-              name: `${locName} Bypass Link`,
-              highway: "tertiary",
-              lanes: 2,
-              locality: locName,
-            },
-            geometry: {
-              type: "LineString",
-              coordinates: [
-                [tLng - degLng * 0.7, tLat + degLat * 0.5],
-                [tLng, tLat + degLat * 0.4],
-                [tLng + degLng * 0.8, tLat + degLat * 0.6],
-              ],
-            },
-          },
-        ];
-        features = [...features, ...syntheticLocalRoads];
-      }
-
-      // Evaluate spatial intersection for each road feature
-      const updatedFeatures = features.map((feature) => {
+      const updatedFeatures = rawGeojson.features.map((feature) => {
         const coords = feature.geometry?.coordinates;
-        if (!coords || feature.geometry?.type !== "LineString") {
+        if (!coords || feature.geometry?.type !== "LineString" || coords.length < 2) {
           return feature;
+        }
+
+        // Fast bounding box rejection test
+        let minRoadLon = Infinity, maxRoadLon = -Infinity;
+        let minRoadLat = Infinity, maxRoadLat = -Infinity;
+        for (let i = 0; i < coords.length; i++) {
+          const lon = coords[i][0];
+          const lat = coords[i][1];
+          if (lon < minRoadLon) minRoadLon = lon;
+          if (lon > maxRoadLon) maxRoadLon = lon;
+          if (lat < minRoadLat) minRoadLat = lat;
+          if (lat > maxRoadLat) maxRoadLat = lat;
         }
 
         let minDistance = Infinity;
         for (const pt of riskPoints) {
+          // If completely outside expanded bounding box, skip detailed projection
+          if (
+            pt.lng < minRoadLon - degBuffer ||
+            pt.lng > maxRoadLon + degBuffer ||
+            pt.lat < minRoadLat - degBuffer ||
+            pt.lat > maxRoadLat + degBuffer
+          ) {
+            continue;
+          }
+
           const d = minDistanceToPolylineMeters(pt.lat, pt.lng, coords);
           if (d < minDistance) minDistance = d;
         }
@@ -304,7 +218,7 @@ export default function MapCanvasInner({
           properties: {
             ...feature.properties,
             is_flooded: isFlooded,
-            distance_to_risk_m: Math.round(minDistance),
+            distance_to_risk_m: isFinite(minDistance) ? Math.round(minDistance) : 9999,
             flood_depth_m: floodSeverity,
             risk_tier: isFlooded ? "HIGH_FLOOD" : "CLEAR",
           },
@@ -316,7 +230,7 @@ export default function MapCanvasInner({
         features: updatedFeatures,
       };
     },
-    [getRiskCoordinates, horizon, marker]
+    [getRiskCoordinates, horizon]
   );
 
   // Initialize Mapbox Map Instance
@@ -372,14 +286,14 @@ export default function MapCanvasInner({
               },
               paint: {
                 "line-color": "#ef4444",
-                "line-width": 11,
-                "line-opacity": 0.45,
-                "line-blur": 3.5,
+                "line-width": 8,
+                "line-opacity": 0.35,
+                "line-blur": 2.0,
               },
             });
 
             // Layer 2: Main Vector Road Layer with Dynamic Mapbox Spatial Expression
-            // Flooded roads = Bold Red (#ef4444, 4.8px); Unflooded roads = Subtle Dark Gray (#475569, 1.6px)
+            // Flooded roads = Bold Red (#ef4444, 4.5px); Unflooded roads = Subtle Dark Gray (#475569, 1.5px)
             map.addLayer({
               id: "local-roads-vector",
               type: "line",
@@ -398,14 +312,14 @@ export default function MapCanvasInner({
                 "line-width": [
                   "case",
                   ["==", ["get", "is_flooded"], true],
-                  4.8, // Increased width for flooded roads
-                  1.6, // Subtle width for passable roads
+                  4.5, // Increased width for flooded roads
+                  1.5, // Subtle width for passable roads
                 ],
                 "line-opacity": [
                   "case",
                   ["==", ["get", "is_flooded"], true],
                   1.0,
-                  dark ? 0.75 : 0.65,
+                  dark ? 0.7 : 0.55,
                 ],
               },
             });
