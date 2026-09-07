@@ -56,8 +56,8 @@ function minDistanceToPolylineMeters(targetLat, targetLng, coordinates) {
 }
 
 /**
- * High-performance, reliable basemap style using standard 256x256 raster tiles
- * across load-balanced subdomains with seamless OSM fallback.
+ * High-performance, 100% reliable basemap style using direct OpenStreetMap tiles.
+ * Always renders crisp streets, labels, rivers, and topography even without a Mapbox token.
  */
 function getBasemapStyle(isDark) {
   if (MAPBOX_TOKEN) {
@@ -69,25 +69,17 @@ function getBasemapStyle(isDark) {
   return {
     version: 8,
     sources: {
-      "carto-basemap": {
+      "osm-basemap": {
         type: "raster",
-        tiles: isDark
-          ? [
-              "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-              "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-              "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-              "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-            ]
-          : [
-              "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-              "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-              "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-              "https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-            ],
+        tiles: [
+          "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        ],
         tileSize: 256,
         maxzoom: 19,
         attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       },
     },
     layers: [
@@ -99,15 +91,21 @@ function getBasemapStyle(isDark) {
         },
       },
       {
-        id: "carto-basemap-layer",
+        id: "osm-basemap-layer",
         type: "raster",
-        source: "carto-basemap",
+        source: "osm-basemap",
         minzoom: 0,
         maxzoom: 22,
-        paint: {
-          "raster-opacity": 1.0,
-          "raster-fade-duration": 100,
-        },
+        paint: isDark
+          ? {
+              "raster-opacity": 0.88,
+              "raster-brightness-max": 0.78,
+              "raster-contrast": 0.18,
+              "raster-saturation": -0.25,
+            }
+          : {
+              "raster-opacity": 1.0,
+            },
       },
     ],
   };
@@ -615,6 +613,16 @@ export default function MapCanvasInner({
             opacity: 0;
           }
         }
+        .mapboxgl-map {
+          width: 100% !important;
+          height: 100% !important;
+          position: absolute !important;
+          inset: 0 !important;
+        }
+        .mapboxgl-canvas {
+          width: 100% !important;
+          height: 100% !important;
+        }
         .mapboxgl-popup-content {
           background: transparent !important;
           padding: 0 !important;
@@ -626,8 +634,7 @@ export default function MapCanvasInner({
       `}</style>
       <div
         ref={containerRef}
-        className={`h-full w-full ${dark ? "map-dark" : ""}`}
-        style={{ minHeight: "100%", width: "100%" }}
+        className="absolute inset-0 h-full w-full"
       />
     </div>
   );
