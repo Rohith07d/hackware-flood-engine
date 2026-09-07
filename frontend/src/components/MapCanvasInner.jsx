@@ -509,6 +509,16 @@ export default function MapCanvasInner({
     };
   }, [dark]);
 
+  // Responsive map resizing when container dimensions change (mobile 60vh <-> desktop, orientation change, window resize)
+  useEffect(() => {
+    if (!containerRef.current || !mapRef.current) return;
+    const ro = new ResizeObserver(() => {
+      mapRef.current?.resize();
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [mapLoaded]);
+
   // Update center smoothly when prop changes
   useEffect(() => {
     if (!mapRef.current || !center) return;
