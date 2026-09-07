@@ -246,6 +246,24 @@ def get_hazard_map_overlay():
     return FileResponse(overlay_path, media_type="image/png")
 
 
+@app.get("/data/local_roads.geojson", tags=["Vector Data"])
+def get_local_roads_geojson():
+    """Serve the local road network GeoJSON with LineString features."""
+    roads_path = Path(__file__).resolve().parent.parent / "data" / "local_roads.geojson"
+    if not roads_path.exists():
+        raise HTTPException(status_code=404, detail="local_roads.geojson not found.")
+    return FileResponse(roads_path, media_type="application/geo+json")
+
+
+@app.get("/data/local_drains.geojson", tags=["Vector Data"])
+def get_local_drains_geojson():
+    """Serve the local hydrological drainage network GeoJSON with LineString features."""
+    drains_path = Path(__file__).resolve().parent.parent / "data" / "local_drains.geojson"
+    if not drains_path.exists():
+        raise HTTPException(status_code=404, detail="local_drains.geojson not found.")
+    return FileResponse(drains_path, media_type="application/geo+json")
+
+
 @app.get("/rainfall/timeseries", tags=["Hydrology"])
 def get_rainfall_timeseries():
     """Retrieve historical hourly rainfall timeseries (Oct 2020 Hyderabad storm) and derived hydrological metrics."""

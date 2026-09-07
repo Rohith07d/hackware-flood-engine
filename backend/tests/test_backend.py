@@ -195,3 +195,35 @@ def test_alerts_generate_and_list():
     alerts_list = list_resp.json()
     assert isinstance(alerts_list, list)
     assert len(alerts_list) >= 1
+
+
+def test_drain_spatial_index_ckdtree():
+    from app.ml_predictor import drain_index
+    assert drain_index.point_count > 0
+    assert drain_index.tree is not None
+
+    # Test point near Musi River line
+    musi_dist = drain_index.query_distance_meters(17.37, 78.48)
+    assert musi_dist < 100.0  # Musi coordinates pass directly through here
+
+    # Test point further out
+    outer_dist = drain_index.query_distance_meters(17.43, 78.41)
+    assert outer_dist > 500.0
+
+    # Test coordinate prediction uses real calculated drain distance
+    pred = predictor.predict_coordinate(17.43, 78.41, 75.0)
+    assert pred["features_used"]["dist_to_stream"] == outer_dist
+
+
+def test_geojson_endpoints():
+    roads_resp = client.get("/data/local_roads.geojson")
+    assert roads_resp.status_code == 200
+    roads_data = roads_resp.json()
+    assert roads_data["type"] == "FeatureCollection"
+    assert len(roads_data["features"]) > 0
+
+    drains_resp = client.get("/data/local_drains.geojson")
+    assert drains_resp.status_code == 200
+    drains_data = drains_resp.json()
+    assert drains_data["type"] == "FeatureCollection"
+    assert len(drains_data["features"]) > 0

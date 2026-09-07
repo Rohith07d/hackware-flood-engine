@@ -1,0 +1,322 @@
+{
+  "type": "FeatureCollection",
+  "name": "hyderabad_local_drains",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "drain_musi_river_main",
+      "properties": {
+        "id": "drain_musi_river_main",
+        "name": "Musi River Main Channel",
+        "type": "Major River",
+        "width_m": 85.0,
+        "risk_tier": "Critical"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.32,
+            17.375
+          ],
+          [
+            78.36,
+            17.371
+          ],
+          [
+            78.4,
+            17.368
+          ],
+          [
+            78.44,
+            17.365
+          ],
+          [
+            78.465,
+            17.367
+          ],
+          [
+            78.48,
+            17.37
+          ],
+          [
+            78.492,
+            17.382
+          ],
+          [
+            78.5065,
+            17.3765
+          ],
+          [
+            78.52,
+            17.394
+          ],
+          [
+            78.55,
+            17.385
+          ],
+          [
+            78.59,
+            17.38
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "drain_begumpet_nala",
+      "properties": {
+        "id": "drain_begumpet_nala",
+        "name": "Begumpet - Hussain Sagar Outflow Nala",
+        "type": "Major Storm Drain",
+        "width_m": 22.0,
+        "risk_tier": "Critical"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.4738,
+            17.4239
+          ],
+          [
+            78.471,
+            17.432
+          ],
+          [
+            78.468,
+            17.441
+          ],
+          [
+            78.4664,
+            17.4447
+          ],
+          [
+            78.463,
+            17.452
+          ],
+          [
+            78.46,
+            17.46
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "drain_kukatpally_nala",
+      "properties": {
+        "id": "drain_kukatpally_nala",
+        "name": "Kukatpally Stormwater Canal",
+        "type": "Major Storm Drain",
+        "width_m": 18.0,
+        "risk_tier": "High"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.3842,
+            17.5169
+          ],
+          [
+            78.399,
+            17.493
+          ],
+          [
+            78.4138,
+            17.4849
+          ],
+          [
+            78.441,
+            17.4589
+          ],
+          [
+            78.465,
+            17.435
+          ],
+          [
+            78.4738,
+            17.4239
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "drain_narayanguda_nala",
+      "properties": {
+        "id": "drain_narayanguda_nala",
+        "name": "Narayanguda - Barkatpura Stormwater Nala",
+        "type": "Urban Collector Drain",
+        "width_m": 12.0,
+        "risk_tier": "High"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.4877,
+            17.4028
+          ],
+          [
+            78.4902,
+            17.397
+          ],
+          [
+            78.4912,
+            17.3984
+          ],
+          [
+            78.494,
+            17.391
+          ],
+          [
+            78.492,
+            17.382
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "drain_murki_nala",
+      "properties": {
+        "id": "drain_murki_nala",
+        "name": "Murki Nala (Old City Drainage)",
+        "type": "Storm Drain",
+        "width_m": 14.0,
+        "risk_tier": "High"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.4747,
+            17.3616
+          ],
+          [
+            78.48,
+            17.367
+          ],
+          [
+            78.486,
+            17.373
+          ],
+          [
+            78.49,
+            17.378
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "drain_durgam_cheruvu_overflow",
+      "properties": {
+        "id": "drain_durgam_cheruvu_overflow",
+        "name": "Durgam Cheruvu Spillway Nala",
+        "type": "Lake Spillway Channel",
+        "width_m": 15.0,
+        "risk_tier": "Moderate"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.3882,
+            17.4325
+          ],
+          [
+            78.3915,
+            17.428
+          ],
+          [
+            78.395,
+            17.42
+          ],
+          [
+            78.398,
+            17.41
+          ],
+          [
+            78.402,
+            17.395
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "drain_gachibowli_tributary",
+      "properties": {
+        "id": "drain_gachibowli_tributary",
+        "name": "Gachibowli - Gowlidoddi Basin Drain",
+        "type": "Natural Drainage Channel",
+        "width_m": 8.0,
+        "risk_tier": "Moderate"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.341,
+            17.43
+          ],
+          [
+            78.345,
+            17.435
+          ],
+          [
+            78.3489,
+            17.4401
+          ],
+          [
+            78.353,
+            17.446
+          ],
+          [
+            78.36,
+            17.455
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "drain_ghatkesar_channel",
+      "properties": {
+        "id": "drain_ghatkesar_channel",
+        "name": "Ghatkesar Eastern Outflow Stream",
+        "type": "Catchment Stream",
+        "width_m": 10.0,
+        "risk_tier": "Moderate"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.675,
+            17.44
+          ],
+          [
+            78.682,
+            17.4435
+          ],
+          [
+            78.6844,
+            17.4455
+          ],
+          [
+            78.69,
+            17.45
+          ],
+          [
+            78.698,
+            17.455
+          ]
+        ]
+      }
+    }
+  ]
+}

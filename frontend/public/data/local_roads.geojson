@@ -1,0 +1,804 @@
+{
+  "type": "FeatureCollection",
+  "name": "hyderabad_local_roads",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "road_gachibowli_orr",
+      "properties": {
+        "id": "road_gachibowli_orr",
+        "name": "Outer Ring Road (ORR) Gachibowli Stretch",
+        "highway": "motorway",
+        "lanes": 8,
+        "locality": "Gachibowli"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.341,
+            17.43
+          ],
+          [
+            78.3445,
+            17.4355
+          ],
+          [
+            78.348,
+            17.441
+          ],
+          [
+            78.3515,
+            17.4465
+          ],
+          [
+            78.355,
+            17.452
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_old_mumbai_highway",
+      "properties": {
+        "id": "road_old_mumbai_highway",
+        "name": "Old Mumbai Highway",
+        "highway": "primary",
+        "lanes": 4,
+        "locality": "Gachibowli"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.338,
+            17.443
+          ],
+          [
+            78.344,
+            17.4415
+          ],
+          [
+            78.3489,
+            17.4401
+          ],
+          [
+            78.355,
+            17.4385
+          ],
+          [
+            78.361,
+            17.437
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_gachibowli_underpass",
+      "properties": {
+        "id": "road_gachibowli_underpass",
+        "name": "Gachibowli Junction Underpass",
+        "highway": "primary",
+        "lanes": 4,
+        "locality": "Gachibowli",
+        "is_underpass": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.3475,
+            17.4388
+          ],
+          [
+            78.3489,
+            17.4401
+          ],
+          [
+            78.3502,
+            17.4412
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_isb_main",
+      "properties": {
+        "id": "road_isb_main",
+        "name": "ISB Road (Wipro Circle - Microsoft)",
+        "highway": "secondary",
+        "lanes": 4,
+        "locality": "Gachibowli"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.3489,
+            17.4401
+          ],
+          [
+            78.345,
+            17.436
+          ],
+          [
+            78.341,
+            17.431
+          ],
+          [
+            78.337,
+            17.426
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_financial_district_main",
+      "properties": {
+        "id": "road_financial_district_main",
+        "name": "Financial District Central Boulevard",
+        "highway": "primary",
+        "lanes": 6,
+        "locality": "Nanakramguda"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.337,
+            17.426
+          ],
+          [
+            78.34,
+            17.42
+          ],
+          [
+            78.343,
+            17.415
+          ],
+          [
+            78.346,
+            17.41
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_dlf_cybercity",
+      "properties": {
+        "id": "road_dlf_cybercity",
+        "name": "DLF Cyber City - Radisson Road",
+        "highway": "secondary",
+        "lanes": 4,
+        "locality": "Gachibowli"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.352,
+            17.445
+          ],
+          [
+            78.3565,
+            17.4485
+          ],
+          [
+            78.361,
+            17.452
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_hitec_city_main",
+      "properties": {
+        "id": "road_hitec_city_main",
+        "name": "HITEC City Main Road",
+        "highway": "primary",
+        "lanes": 6,
+        "locality": "Madhapur"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.385,
+            17.44
+          ],
+          [
+            78.388,
+            17.444
+          ],
+          [
+            78.3915,
+            17.4483
+          ],
+          [
+            78.395,
+            17.452
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_cyber_towers_junction",
+      "properties": {
+        "id": "road_cyber_towers_junction",
+        "name": "Cyber Towers Junction & Underpass",
+        "highway": "primary",
+        "lanes": 4,
+        "locality": "HITEC City"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.378,
+            17.45
+          ],
+          [
+            78.3808,
+            17.4504
+          ],
+          [
+            78.384,
+            17.451
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_durgam_cheruvu_bridge",
+      "properties": {
+        "id": "road_durgam_cheruvu_bridge",
+        "name": "Durgam Cheruvu Cable Bridge Road",
+        "highway": "primary",
+        "lanes": 4,
+        "locality": "Madhapur"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.398,
+            17.442
+          ],
+          [
+            78.395,
+            17.4445
+          ],
+          [
+            78.392,
+            17.447
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_sp_road_begumpet",
+      "properties": {
+        "id": "road_sp_road_begumpet",
+        "name": "Sardar Patel (SP) Road",
+        "highway": "primary",
+        "lanes": 6,
+        "locality": "Begumpet"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.455,
+            17.438
+          ],
+          [
+            78.461,
+            17.4415
+          ],
+          [
+            78.4664,
+            17.4447
+          ],
+          [
+            78.472,
+            17.448
+          ],
+          [
+            78.478,
+            17.451
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_prakash_nagar_underpass",
+      "properties": {
+        "id": "road_prakash_nagar_underpass",
+        "name": "Prakash Nagar Metro Underpass",
+        "highway": "secondary",
+        "lanes": 4,
+        "locality": "Begumpet",
+        "is_underpass": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.464,
+            17.443
+          ],
+          [
+            78.4664,
+            17.4447
+          ],
+          [
+            78.469,
+            17.4465
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_begumpet_railway_bridge",
+      "properties": {
+        "id": "road_begumpet_railway_bridge",
+        "name": "Begumpet Railway Bridge Low-Line Road",
+        "highway": "secondary",
+        "lanes": 2,
+        "locality": "Begumpet"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.462,
+            17.441
+          ],
+          [
+            78.465,
+            17.4435
+          ],
+          [
+            78.4675,
+            17.447
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_narayanguda_flyover_underpass",
+      "properties": {
+        "id": "road_narayanguda_flyover_underpass",
+        "name": "Narayanguda Flyover Underpass & X Roads",
+        "highway": "primary",
+        "lanes": 4,
+        "locality": "Narayanguda",
+        "is_underpass": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.49,
+            17.394
+          ],
+          [
+            78.4905,
+            17.397
+          ],
+          [
+            78.4915,
+            17.4
+          ],
+          [
+            78.4925,
+            17.403
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_kmit_campus_lane",
+      "properties": {
+        "id": "road_kmit_campus_lane",
+        "name": "KMIT Campus Access Road",
+        "highway": "tertiary",
+        "lanes": 2,
+        "locality": "Narayanguda"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.489,
+            17.3955
+          ],
+          [
+            78.4902,
+            17.397
+          ],
+          [
+            78.4918,
+            17.3985
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_himayatnagar_main",
+      "properties": {
+        "id": "road_himayatnagar_main",
+        "name": "Himayatnagar Main Arterial Corridor",
+        "highway": "primary",
+        "lanes": 4,
+        "locality": "Himayatnagar"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.484,
+            17.398
+          ],
+          [
+            78.487,
+            17.401
+          ],
+          [
+            78.49,
+            17.404
+          ],
+          [
+            78.493,
+            17.407
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_barkatpura_link",
+      "properties": {
+        "id": "road_barkatpura_link",
+        "name": "Barkatpura Chaman - Narayanguda Link",
+        "highway": "secondary",
+        "lanes": 2,
+        "locality": "Narayanguda"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.495,
+            17.394
+          ],
+          [
+            78.4925,
+            17.3965
+          ],
+          [
+            78.49,
+            17.399
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_hyderguda_old_mla",
+      "properties": {
+        "id": "road_hyderguda_old_mla",
+        "name": "Hyderguda - Old MLA Quarters Road",
+        "highway": "secondary",
+        "lanes": 2,
+        "locality": "Hyderguda"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.483,
+            17.396
+          ],
+          [
+            78.487,
+            17.3975
+          ],
+          [
+            78.491,
+            17.399
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_chaderghat_causeway",
+      "properties": {
+        "id": "road_chaderghat_causeway",
+        "name": "Chaderghat Causeway & Embankment Road",
+        "highway": "secondary",
+        "lanes": 4,
+        "locality": "Musi River Basin",
+        "is_causeway": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.488,
+            17.378
+          ],
+          [
+            78.491,
+            17.381
+          ],
+          [
+            78.4945,
+            17.384
+          ],
+          [
+            78.498,
+            17.387
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_moosarambagh_bridge",
+      "properties": {
+        "id": "road_moosarambagh_bridge",
+        "name": "Moosarambagh Low Bridge Road",
+        "highway": "secondary",
+        "lanes": 2,
+        "locality": "Moosarambagh",
+        "is_causeway": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.502,
+            17.373
+          ],
+          [
+            78.506,
+            17.376
+          ],
+          [
+            78.51,
+            17.379
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_mgbs_access",
+      "properties": {
+        "id": "road_mgbs_access",
+        "name": "MGBS - Imliban Terminal Access Road",
+        "highway": "primary",
+        "lanes": 4,
+        "locality": "Afzal Gunj"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.48,
+            17.376
+          ],
+          [
+            78.483,
+            17.379
+          ],
+          [
+            78.4865,
+            17.3815
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_puranapul_bridge",
+      "properties": {
+        "id": "road_puranapul_bridge",
+        "name": "Puranapul Historic Bridge Approach",
+        "highway": "secondary",
+        "lanes": 2,
+        "locality": "Old City"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.46,
+            17.362
+          ],
+          [
+            78.4635,
+            17.3655
+          ],
+          [
+            78.467,
+            17.369
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_nh163_ghatkesar",
+      "properties": {
+        "id": "road_nh163_ghatkesar",
+        "name": "NH163 Warangal Highway (Ghatkesar Stretch)",
+        "highway": "trunk",
+        "lanes": 6,
+        "locality": "Ghatkesar"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.67,
+            17.435
+          ],
+          [
+            78.677,
+            17.44
+          ],
+          [
+            78.6844,
+            17.4455
+          ],
+          [
+            78.692,
+            17.451
+          ],
+          [
+            78.7,
+            17.456
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_ghatkesar_main",
+      "properties": {
+        "id": "road_ghatkesar_main",
+        "name": "Ghatkesar Main Road",
+        "highway": "primary",
+        "lanes": 2,
+        "locality": "Ghatkesar"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.68,
+            17.442
+          ],
+          [
+            78.6844,
+            17.4455
+          ],
+          [
+            78.689,
+            17.449
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_ghatkesar_railway_underbridge",
+      "properties": {
+        "id": "road_ghatkesar_railway_underbridge",
+        "name": "Ghatkesar Railway Station Underbridge",
+        "highway": "secondary",
+        "lanes": 2,
+        "locality": "Ghatkesar",
+        "is_underpass": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.682,
+            17.4435
+          ],
+          [
+            78.6835,
+            17.445
+          ],
+          [
+            78.685,
+            17.4465
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_kukatpally_main_highway",
+      "properties": {
+        "id": "road_kukatpally_main_highway",
+        "name": "Mumbai Highway - Kukatpally Stretch",
+        "highway": "primary",
+        "lanes": 6,
+        "locality": "Kukatpally"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.405,
+            17.478
+          ],
+          [
+            78.41,
+            17.4815
+          ],
+          [
+            78.4138,
+            17.4849
+          ],
+          [
+            78.418,
+            17.488
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_jntu_kphb_corridor",
+      "properties": {
+        "id": "road_jntu_kphb_corridor",
+        "name": "JNTU - KPHB 100 Feet Road",
+        "highway": "primary",
+        "lanes": 6,
+        "locality": "KPHB"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.388,
+            17.493
+          ],
+          [
+            78.392,
+            17.4955
+          ],
+          [
+            78.3975,
+            17.4975
+          ],
+          [
+            78.402,
+            17.5
+          ]
+        ]
+      }
+    }
+  ]
+}
