@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { CENTER, evacuationRoute, mapMarkers } from "../data/floodData.js";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
-if (MAPBOX_TOKEN) {
-  mapboxgl.accessToken = MAPBOX_TOKEN;
-}
 
 const markerColors = {
   gauge: "#f5b942",
@@ -61,9 +58,7 @@ function minDistanceToPolylineMeters(targetLat, targetLng, coordinates) {
  */
 function getBasemapStyle(isDark) {
   if (MAPBOX_TOKEN) {
-    return isDark
-      ? "mapbox://styles/mapbox/dark-v11"
-      : "mapbox://styles/mapbox/light-v11";
+    return `https://api.mapbox.com/styles/v1/mapbox/${isDark ? "dark-v11" : "light-v11"}?access_token=${MAPBOX_TOKEN}`;
   }
 
   return {
@@ -333,7 +328,7 @@ export default function MapCanvasInner({
       mapRef.current = null;
     }
 
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
       container: containerRef.current,
       style: getBasemapStyle(dark),
       center: initialCenterLngLat,
@@ -416,7 +411,7 @@ export default function MapCanvasInner({
             });
 
             // Interactive popup on hover/click over road segments
-            popupRef.current = new mapboxgl.Popup({
+            popupRef.current = new maplibregl.Popup({
               closeButton: false,
               closeOnClick: false,
               className: "flood-road-popup",
@@ -563,12 +558,12 @@ export default function MapCanvasInner({
       <div style="position:relative;width:14px;height:14px;top:5px;left:5px;border-radius:50%;background:#dc2626;border:2.5px solid #ffffff;box-shadow:0 0 8px rgba(0,0,0,0.4);"></div>
     `;
 
-    const m = new mapboxgl.Marker({ element: el })
+    const m = new maplibregl.Marker({ element: el })
       .setLngLat([activeMarker.lng, activeMarker.lat])
       .addTo(mapRef.current);
 
     if (activeMarker.label) {
-      const p = new mapboxgl.Popup({ offset: 14 }).setText(activeMarker.label);
+      const p = new maplibregl.Popup({ offset: 14 }).setText(activeMarker.label);
       m.setPopup(p);
     }
 
@@ -594,9 +589,9 @@ export default function MapCanvasInner({
       el.style.boxShadow = "0 1px 4px rgba(0,0,0,0.4)";
       el.style.cursor = "pointer";
 
-      const m = new mapboxgl.Marker({ element: el })
+      const m = new maplibregl.Marker({ element: el })
         .setLngLat([poi.lng, poi.lat])
-        .setPopup(new mapboxgl.Popup({ offset: 10 }).setText(poi.label || poi.id))
+        .setPopup(new maplibregl.Popup({ offset: 10 }).setText(poi.label || poi.id))
         .addTo(mapRef.current);
 
       poiMarkersRef.current.push(m);
@@ -613,21 +608,25 @@ export default function MapCanvasInner({
             opacity: 0;
           }
         }
+        .maplibregl-map,
         .mapboxgl-map {
           width: 100% !important;
           height: 100% !important;
           position: absolute !important;
           inset: 0 !important;
         }
+        .maplibregl-canvas,
         .mapboxgl-canvas {
           width: 100% !important;
           height: 100% !important;
         }
+        .maplibregl-popup-content,
         .mapboxgl-popup-content {
           background: transparent !important;
           padding: 0 !important;
           box-shadow: none !important;
         }
+        .maplibregl-popup-tip,
         .mapboxgl-popup-tip {
           border-top-color: #0f172a !important;
         }
