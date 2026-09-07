@@ -290,6 +290,41 @@ class LightGBMFloodPredictor:
         """
         return self.drain_index.query_grid_distances_meters(grid_lats, grid_lons)
 
+    def predict_proba(self, X: Any) -> np.ndarray:
+        """
+        Compute class probabilities [P(no_flood), P(flood)] for feature matrix X (N, 13).
+        Compatible with scikit-learn predict_proba API.
+        Returns continuous probabilities directly from the LightGBM Booster.
+        """
+        if self.model is None:
+            self._load_model()
+
+        if not isinstance(X, np.ndarray):
+            X = np.array(X, dtype=np.float32)
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+
+        raw_pred = self.model.predict(X)
+        p1 = np.clip(np.asarray(raw_pred, dtype=np.float64), 0.0, 1.0)
+        p0 = 1.0 - p1
+        return np.column_stack([p0, p1])
+
+    def predict_flood_extent(
+        self,
+        rainfall_mm: float = 62.0,
+        epicenter_lat: Optional[float] = None,
+        epicenter_lon: Optional[float] = None,
+        roads_geojson_path: Optional[Path] = None,
+    ) -> Dict[str, Any]:
+        """Method wrapper for predict_flood_extent."""
+        return predict_flood_extent(
+            rainfall_mm=rainfall_mm,
+            epicenter_lat=epicenter_lat,
+            epicenter_lon=epicenter_lon,
+            roads_geojson_path=roads_geojson_path,
+            predictor_instance=self,
+        )
+
     @staticmethod
     def classify_risk_level(score: float) -> str:
         """
@@ -307,6 +342,128 @@ class LightGBMFloodPredictor:
             return "HIGH"
         else:
             return "CRITICAL"
+
+
+def predict_flood_extent(
+    rainfall_mm: float = 62.0,
+    epicenter_lat: Optional[float] = None,
+    epicenter_lon: Optional[float] = None,
+    roads_geojson_path: Optional[Path] = None,
+    predictor_instance: Optional[LightGBMFloodPredictor] = None,
+) -> Dict[str, Any]:
+    """
+    Enriches road network GeoJSON with continuous flood risk scores derived directly
+    from LightGBM's predict_proba().
+
+    Task 1 Requirements:
+    - Every affected road feature's properties object includes the raw, continuous
+      risk_score float (from 0.0 to 1.0) directly from LightGBM's predict_proba().
+    - Does NOT filter by a binary threshold—passes the actual continuous probability down to client.
+    - Factors in slope, drainage distance (via cKDTree), elevation, and rainfall.
+
+    Returns:
+      GeoJSON FeatureCollection dict with continuous risk_score, risk_tier, and hydrological metrics.
+    """
+    pred = predictor_instance or LightGBMFloodPredictor.get_instance()
+
+    # Locate local_roads.geojson
+    path = roads_geojson_path or (settings.base_dir / "data" / "local_roads.geojson")
+    if not path.exists():
+        alt_path = Path(__file__).resolve().parent.parent / "data" / "local_roads.geojson"
+        if alt_path.exists():
+            path = alt_path
+        else:
+            raise FileNotFoundError(f"[predict_flood_extent] local_roads.geojson not found at {path}")
+
+    with open(path, "r", encoding="utf-8") as f:
+        geojson_data = json.load(f)
+
+    features = geojson_data.get("features", [])
+    if not features:
+        return geojson_data
+
+    # Extract representative midpoint coordinates for each road feature
+    coords_list: List[Tuple[float, float]] = []
+    for feat in features:
+        coords = feat.get("geometry", {}).get("coordinates", [])
+        if coords:
+            mid = coords[len(coords) // 2]
+            coords_list.append((float(mid[1]), float(mid[0])))  # (lat, lon)
+        else:
+            coords_list.append((HYDERABAD_REF_LAT, HYDERABAD_REF_LON))
+
+    lats = np.array([c[0] for c in coords_list], dtype=np.float64)
+    lons = np.array([c[1] for c in coords_list], dtype=np.float64)
+    n_roads = len(features)
+
+    # 1. Vectorized cKDTree distance to nearest drainage channels in O(N log M)
+    drain_dists = pred.compute_grid_drain_distances(lats, lons)
+
+    # 2. Rainfall features for the given scenario
+    rainfall_feats = get_rainfall_scenario_features(rainfall_mm)
+
+    # 3. Assemble (N, 13) feature matrix for LightGBM
+    X = np.zeros((n_roads, 13), dtype=np.float32)
+    for i in range(n_roads):
+        tf = terrain_service.sample_terrain_features(lats[i], lons[i])
+        X[i, 0] = tf.get("elevation", 505.0)
+        X[i, 1] = tf.get("slope", 2.5)
+        X[i, 2] = tf.get("aspect", 180.0)
+        X[i, 3] = tf.get("curvature", 0.0)
+        X[i, 4] = tf.get("tri", 2.0)
+        X[i, 5] = tf.get("twi", 8.5)
+        X[i, 6] = tf.get("rel_elev", 0.0)
+        X[i, 7] = tf.get("flow_acc_log", 3.0)
+        X[i, 8] = drain_dists[i]
+        X[i, 9] = rainfall_feats.get("total_rainfall_mm", 0.0)
+        X[i, 10] = rainfall_feats.get("max_hourly_mm", 0.0)
+        X[i, 11] = rainfall_feats.get("max_cum24h_mm", 0.0)
+        X[i, 12] = rainfall_feats.get("max_api", 0.0)
+
+    # 4. Predict raw continuous probabilities via predict_proba()[:, 1]
+    probabilities = pred.predict_proba(X)[:, 1]
+
+    # 5. Enrich each feature's properties with continuous risk_score float
+    enriched_features = []
+    for i, feat in enumerate(features):
+        raw_prob = float(probabilities[i])
+        risk_score = round(max(0.0, min(1.0, raw_prob)), 4)
+        risk_tier = pred.classify_risk_level(risk_score)
+
+        props = dict(feat.get("properties", {}))
+        props["risk_score"] = risk_score
+        props["risk_tier"] = risk_tier
+        props["drain_distance_m"] = round(float(drain_dists[i]), 1)
+        props["slope_deg"] = round(float(X[i, 1]), 2)
+        props["elevation_m"] = round(float(X[i, 0]), 1)
+        props["flood_depth_m"] = round(float(risk_score * 2.2), 2)
+        props["is_flooded"] = bool(risk_score >= 0.3)
+
+        if epicenter_lat is not None and epicenter_lon is not None:
+            dx = (lons[i] - epicenter_lon) * METERS_PER_DEG_LON
+            dy = (lats[i] - epicenter_lat) * METERS_PER_DEG_LAT
+            props["dist_to_epicenter_m"] = round(float(math.hypot(dx, dy)), 1)
+
+        enriched_feat = {
+            "type": "Feature",
+            "id": feat.get("id", f"road_{i}"),
+            "properties": props,
+            "geometry": feat.get("geometry", {}),
+        }
+        enriched_features.append(enriched_feat)
+
+    return {
+        "type": "FeatureCollection",
+        "name": "hyderabad_local_roads_inundation",
+        "metadata": {
+            "rainfall_mm": rainfall_mm,
+            "total_roads": n_roads,
+            "high_risk_roads": sum(1 for f in enriched_features if f["properties"]["risk_score"] >= 0.6),
+            "critical_roads": sum(1 for f in enriched_features if f["properties"]["risk_score"] >= 0.85),
+            "model_version": "lgb_flood_model.txt",
+        },
+        "features": enriched_features,
+    }
 
 
 # Global singleton instance

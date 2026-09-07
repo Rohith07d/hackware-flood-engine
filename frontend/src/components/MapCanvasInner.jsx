@@ -163,7 +163,7 @@ export default function MapCanvasInner({
     return list;
   }, [highRiskCoordinates, highRiskCoordinate, marker, center]);
 
-  // Apply dynamic spatial filtering on real local roads GeoJSON
+  // Apply dynamic spatial filtering on real local roads GeoJSON with continuous LightGBM risk gradient
   const evaluateRoadFlooding = useCallback(
     (rawGeojson) => {
       if (!rawGeojson || !rawGeojson.features) return null;
@@ -173,6 +173,7 @@ export default function MapCanvasInner({
       const floodThresholdMeters = 350 + (horizon / 100) * 500;
       // Degrees bounding box buffer for fast polyline pre-filtering (~1.2km)
       const degBuffer = (floodThresholdMeters + 300) / 111320.0;
+      const rainIntensity = Math.max(0.05, Math.min(1.0, horizon / 100.0));
 
       const updatedFeatures = rawGeojson.features.map((feature) => {
         const coords = feature.geometry?.coordinates;
@@ -194,7 +195,6 @@ export default function MapCanvasInner({
 
         let minDistance = Infinity;
         for (const pt of riskPoints) {
-          // If completely outside expanded bounding box, skip detailed projection
           if (
             pt.lng < minRoadLon - degBuffer ||
             pt.lng > maxRoadLon + degBuffer ||
@@ -208,19 +208,49 @@ export default function MapCanvasInner({
           if (d < minDistance) minDistance = d;
         }
 
-        const isFlooded = minDistance <= floodThresholdMeters;
-        const floodSeverity = isFlooded
-          ? Math.max(0.3, Math.min(2.0, (1 - minDistance / floodThresholdMeters) * 1.8)).toFixed(2)
-          : "0.00";
+        // Base continuous risk score from LightGBM model if available on feature
+        const baseScore = typeof feature.properties?.risk_score === "number"
+          ? feature.properties.risk_score
+          : 0.0;
+
+        // Continuous proximity gradient: 1.0 at epicenter decaying smoothly to 0.0 at threshold
+        const proximityFactor = minDistance <= floodThresholdMeters
+          ? Math.max(0.0, 1.0 - minDistance / floodThresholdMeters)
+          : 0.0;
+
+        // Calculate continuous dynamic risk_score float in [0.0, 1.0]
+        let dynamicScore = 0.0;
+        if (proximityFactor > 0) {
+          const epicenterFactor = Math.pow(proximityFactor, 1.15);
+          dynamicScore = Math.max(
+            baseScore * rainIntensity,
+            epicenterFactor * (0.28 + 0.72 * rainIntensity)
+          );
+        } else {
+          dynamicScore = baseScore * Math.max(0.05, rainIntensity);
+        }
+        dynamicScore = Math.max(0.0, Math.min(1.0, dynamicScore));
+
+        const riskScoreFloat = parseFloat(dynamicScore.toFixed(4));
+        const isFlooded = riskScoreFloat >= 0.30;
+        const floodSeverity = (riskScoreFloat * 2.4).toFixed(2);
+        const riskTier = riskScoreFloat >= 0.85
+          ? "CRITICAL"
+          : riskScoreFloat >= 0.60
+          ? "HIGH"
+          : riskScoreFloat >= 0.30
+          ? "MODERATE"
+          : "LOW";
 
         return {
           ...feature,
           properties: {
             ...feature.properties,
+            risk_score: riskScoreFloat,
             is_flooded: isFlooded,
             distance_to_risk_m: isFinite(minDistance) ? Math.round(minDistance) : 9999,
             flood_depth_m: floodSeverity,
-            risk_tier: isFlooded ? "HIGH_FLOOD" : "CLEAR",
+            risk_tier: riskTier,
           },
         };
       });
@@ -274,26 +304,51 @@ export default function MapCanvasInner({
               data: filteredData,
             });
 
-            // Layer 1: Ambient Red Glow for Flooded Roads
+            // Layer 1: Ambient Risk Glow for Inundated Roads (triggers when risk_score >= 0.3)
             map.addLayer({
               id: "local-roads-flooded-glow",
               type: "line",
               source: "local-roads",
-              filter: ["==", ["get", "is_flooded"], true],
+              filter: [">=", ["coalesce", ["get", "risk_score"], 0.0], 0.3],
               layout: {
                 "line-join": "round",
                 "line-cap": "round",
               },
               paint: {
-                "line-color": "#ef4444",
-                "line-width": 8,
-                "line-opacity": 0.35,
-                "line-blur": 2.0,
+                "line-color": [
+                  "interpolate",
+                  ["linear"],
+                  ["coalesce", ["get", "risk_score"], 0.0],
+                  0.3, "#f59e0b",
+                  0.6, "#f97316",
+                  0.85, "#ef4444",
+                  1.0, "#7c3aed",
+                ],
+                "line-width": [
+                  "interpolate",
+                  ["linear"],
+                  ["coalesce", ["get", "risk_score"], 0.0],
+                  0.3, 5.0,
+                  0.6, 7.5,
+                  0.85, 10.0,
+                  1.0, 13.0,
+                ],
+                "line-opacity": [
+                  "interpolate",
+                  ["linear"],
+                  ["coalesce", ["get", "risk_score"], 0.0],
+                  0.3, 0.25,
+                  0.6, 0.35,
+                  0.85, 0.45,
+                  1.0, 0.55,
+                ],
+                "line-blur": 2.5,
               },
             });
 
-            // Layer 2: Main Vector Road Layer with Dynamic Mapbox Spatial Expression
-            // Flooded roads = Bold Red (#ef4444, 4.5px); Unflooded roads = Subtle Dark Gray (#475569, 1.5px)
+            // Layer 2: Main Vector Road Layer with 4-Step Continuous LightGBM Risk Gradient
+            // 0.3: Yellow/amber (minor), 0.6: Orange (moderate), 0.85: Red (severe), 1.0: Deep purple/black (critical)
+            // line-width scales smoothly from 1.6px to 6.0px
             map.addLayer({
               id: "local-roads-vector",
               type: "line",
@@ -304,22 +359,34 @@ export default function MapCanvasInner({
               },
               paint: {
                 "line-color": [
-                  "case",
-                  ["==", ["get", "is_flooded"], true],
-                  "#ef4444", // High-risk flooded roads in bold red
-                  dark ? "#475569" : "#64748b", // Unflooded roads in subtle dark gray
+                  "interpolate",
+                  ["linear"],
+                  ["coalesce", ["get", "risk_score"], 0.0],
+                  0.0, dark ? "#475569" : "#94a3b8", // Muted dark gray for unflooded (<0.3)
+                  0.3, "#f59e0b", // Yellow/amber for minor waterlogging
+                  0.6, "#f97316", // Orange for moderate flooding
+                  0.85, "#ef4444", // Red for severe flooding
+                  1.0, "#3b0764", // Deep purple/black for critical inundation
                 ],
                 "line-width": [
-                  "case",
-                  ["==", ["get", "is_flooded"], true],
-                  4.5, // Increased width for flooded roads
-                  1.5, // Subtle width for passable roads
+                  "interpolate",
+                  ["linear"],
+                  ["coalesce", ["get", "risk_score"], 0.0],
+                  0.0, 1.6,
+                  0.3, 2.2,
+                  0.6, 3.6,
+                  0.85, 4.8,
+                  1.0, 6.0,
                 ],
                 "line-opacity": [
-                  "case",
-                  ["==", ["get", "is_flooded"], true],
-                  1.0,
-                  dark ? 0.7 : 0.55,
+                  "interpolate",
+                  ["linear"],
+                  ["coalesce", ["get", "risk_score"], 0.0],
+                  0.0, dark ? 0.65 : 0.5,
+                  0.3, 0.82,
+                  0.6, 0.92,
+                  0.85, 0.98,
+                  1.0, 1.0,
                 ],
               },
             });
@@ -336,22 +403,39 @@ export default function MapCanvasInner({
               if (e.features && e.features.length > 0) {
                 const f = e.features[0];
                 const p = f.properties;
-                const isFlooded = p.is_flooded;
+                const riskScore = typeof p.risk_score === "number" ? p.risk_score : 0.0;
                 const roadName = p.name || p.id || "Road Segment";
                 const locality = p.locality || "Hyderabad Region";
-                const statusBadge = isFlooded
-                  ? '<span style="color:#ef4444;font-weight:700;">⚠️ FLOODED (High Risk)</span>'
-                  : '<span style="color:#10b981;font-weight:600;">✅ CLEAR (Passable)</span>';
-                const depthInfo = isFlooded
-                  ? `<div style="font-size:11px;color:#f87171;margin-top:2px;">Est. Depth: ~${p.flood_depth_m}m | Distance: ${p.distance_to_risk_m}m</div>`
-                  : `<div style="font-size:11px;color:#94a3b8;margin-top:2px;">Nearest Drain/Risk: ${p.distance_to_risk_m}m</div>`;
+
+                let statusBadge = "";
+                let borderColor = "#334155";
+                if (riskScore >= 0.85) {
+                  statusBadge = `<span style="color:#d8b4fe;font-weight:700;">🟣 CRITICAL INUNDATION (${(riskScore * 100).toFixed(1)}%)</span>`;
+                  borderColor = "#6b21a8";
+                } else if (riskScore >= 0.60) {
+                  statusBadge = `<span style="color:#f87171;font-weight:700;">🔴 SEVERE FLOODING (${(riskScore * 100).toFixed(1)}%)</span>`;
+                  borderColor = "#b91c1c";
+                } else if (riskScore >= 0.30) {
+                  statusBadge = `<span style="color:#fb923c;font-weight:700;">🟠 MODERATE FLOODING (${(riskScore * 100).toFixed(1)}%)</span>`;
+                  borderColor = "#c2410c";
+                } else if (riskScore > 0.10) {
+                  statusBadge = `<span style="color:#fde047;font-weight:600;">🟡 MINOR WATERLOGGING (${(riskScore * 100).toFixed(1)}%)</span>`;
+                  borderColor = "#a16207";
+                } else {
+                  statusBadge = `<span style="color:#10b981;font-weight:600;">🟢 CLEAR (Passable)</span>`;
+                  borderColor = "#047857";
+                }
+
+                const depthInfo = riskScore >= 0.30
+                  ? `<div style="font-size:11px;color:#cbd5e1;margin-top:3px;">Water Depth: <b>~${p.flood_depth_m}m</b> | Drain Dist: ${p.distance_to_risk_m || p.drain_distance_m || 0}m</div>`
+                  : `<div style="font-size:11px;color:#94a3b8;margin-top:3px;">Drain / Risk Dist: ${p.distance_to_risk_m || p.drain_distance_m || 0}m</div>`;
 
                 popupRef.current
                   .setLngLat(e.lngLat)
                   .setHTML(
-                    `<div style="font-family:system-ui,sans-serif;padding:6px 8px;font-size:12px;background:#0f172a;color:#f8fafc;border-radius:6px;border:1px solid #334155;box-shadow:0 4px 12px rgba(0,0,0,0.5);">
-                      <div style="font-weight:600;margin-bottom:2px;">${roadName}</div>
-                      <div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">${locality}</div>
+                    `<div style="font-family:system-ui,sans-serif;padding:7px 10px;font-size:12px;background:#0f172a;color:#f8fafc;border-radius:8px;border:1.5px solid ${borderColor};box-shadow:0 6px 16px rgba(0,0,0,0.6);">
+                      <div style="font-weight:600;margin-bottom:2px;font-size:13px;">${roadName}</div>
+                      <div style="font-size:11px;color:#94a3b8;margin-bottom:5px;">${locality}</div>
                       <div>${statusBadge}</div>
                       ${depthInfo}
                     </div>`
@@ -549,6 +633,23 @@ export default function MapCanvasInner({
         ref={containerRef}
         className="absolute inset-0 h-full w-full"
       />
+
+      {/* On-Map 4-Step Risk Gradient Legend */}
+      <div className="pointer-events-none absolute bottom-5 left-4 z-[300] hidden sm:flex flex-col gap-1.5 rounded-xl border border-white/10 bg-slate-900/90 p-2.5 shadow-xl backdrop-blur-md text-[11px] text-slate-300">
+        <div className="font-semibold text-white flex items-center justify-between gap-4">
+          <span>Inundation Risk Gradient</span>
+          <span className="text-[10px] text-slate-400 font-mono">LightGBM</span>
+        </div>
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <div className="h-2 w-36 rounded-full bg-gradient-to-r from-slate-600 via-[#f59e0b] via-[#f97316] via-[#ef4444] to-[#3b0764] border border-white/10" />
+        </div>
+        <div className="flex items-center justify-between text-[9.5px] text-slate-400 font-medium gap-2">
+          <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[#f59e0b]" />0.3 Minor</span>
+          <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[#f97316]" />0.6 Mod</span>
+          <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[#ef4444]" />0.85 Sev</span>
+          <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[#3b0764]" />1.0 Crit</span>
+        </div>
+      </div>
     </div>
   );
 }

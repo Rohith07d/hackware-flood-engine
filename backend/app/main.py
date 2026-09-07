@@ -22,7 +22,7 @@ from .schemas import (
     AnalyzeAreaRequest,
     AnalyzeAreaResponse,
 )
-from .ml_predictor import FEATURE_NAMES, LightGBMFloodPredictor, predictor
+from .ml_predictor import FEATURE_NAMES, LightGBMFloodPredictor, predictor, predict_flood_extent
 from .terrain_service import terrain_service
 from .rainfall_service import load_historical_rainfall_series, BASELINE_RAIN_SUMMARY
 from .ffs_collector import collect_ffs_snapshot, generate_regional_grid
@@ -262,6 +262,25 @@ def get_local_drains_geojson():
     if not drains_path.exists():
         raise HTTPException(status_code=404, detail="local_drains.geojson not found.")
     return FileResponse(drains_path, media_type="application/geo+json")
+
+
+@app.get("/data/flood_extent.geojson", tags=["Vector Data"])
+@app.get("/predict-flood-extent", tags=["Vector Data"])
+def get_flood_extent_geojson(
+    rainfall_mm: float = Query(62.0, ge=0.0, le=300.0, description="Simulated rainfall in mm"),
+    latitude: Optional[float] = Query(None, ge=-90.0, le=90.0, description="Epicenter latitude"),
+    longitude: Optional[float] = Query(None, ge=-180.0, le=180.0, description="Epicenter longitude"),
+):
+    """
+    Generate and serve road network GeoJSON enriched with continuous LightGBM risk_score floats (0.0 to 1.0).
+    Directly evaluates LightGBM's predict_proba() across all road features.
+    """
+    return predict_flood_extent(
+        rainfall_mm=rainfall_mm,
+        epicenter_lat=latitude,
+        epicenter_lon=longitude,
+    )
+
 
 
 @app.get("/rainfall/timeseries", tags=["Hydrology"])

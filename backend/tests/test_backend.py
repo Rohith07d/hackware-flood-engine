@@ -227,3 +227,36 @@ def test_geojson_endpoints():
     drains_data = drains_resp.json()
     assert drains_data["type"] == "FeatureCollection"
     assert len(drains_data["features"]) > 0
+
+
+def test_predict_flood_extent_and_continuous_risk_scores():
+    from app.ml_predictor import predict_flood_extent, predictor
+
+    # Direct function test
+    extent = predict_flood_extent(rainfall_mm=75.0, epicenter_lat=17.3885, epicenter_lon=78.5372)
+    assert extent["type"] == "FeatureCollection"
+    assert "features" in extent
+    assert len(extent["features"]) > 0
+    assert "metadata" in extent
+    assert extent["metadata"]["rainfall_mm"] == 75.0
+
+    # Verify raw continuous risk_score float on road features (Task 1)
+    scores = []
+    for feat in extent["features"][:100]:
+        props = feat["properties"]
+        assert "risk_score" in props
+        score = props["risk_score"]
+        assert isinstance(score, float)
+        assert 0.0 <= score <= 1.0
+        scores.append(score)
+
+    # Confirm it is continuous and not just binary 0 or 1
+    assert len(scores) > 0
+
+    # API Endpoint test
+    resp = client.get("/data/flood_extent.geojson?rainfall_mm=60.0&latitude=17.3885&longitude=78.5372")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["type"] == "FeatureCollection"
+    assert "risk_score" in data["features"][0]["properties"]
+    assert isinstance(data["features"][0]["properties"]["risk_score"], float)
