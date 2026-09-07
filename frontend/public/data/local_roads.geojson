@@ -799,6 +799,541 @@
           ]
         ]
       }
+    },
+    {
+      "type": "Feature",
+      "id": "road_ramanthapur_main",
+      "properties": {
+        "id": "road_ramanthapur_main",
+        "name": "Ramanthapur Main Arterial Road (NH163)",
+        "highway": "primary",
+        "lanes": 6,
+        "locality": "Ramanthapur"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.52,
+            17.388
+          ],
+          [
+            78.526,
+            17.3882
+          ],
+          [
+            78.532,
+            17.3884
+          ],
+          [
+            78.5372,
+            17.3885
+          ],
+          [
+            78.543,
+            17.3895
+          ],
+          [
+            78.549,
+            17.392
+          ],
+          [
+            78.556,
+            17.396
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_ramanthapur_cheruvu_causeway",
+      "properties": {
+        "id": "road_ramanthapur_cheruvu_causeway",
+        "name": "Pedda Cheruvu Lake Spillway & Low-Line Road",
+        "highway": "secondary",
+        "lanes": 4,
+        "locality": "Ramanthapur",
+        "is_underpass": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.534,
+            17.385
+          ],
+          [
+            78.536,
+            17.387
+          ],
+          [
+            78.5372,
+            17.3885
+          ],
+          [
+            78.5385,
+            17.391
+          ],
+          [
+            78.54,
+            17.394
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_ramanthapur_tv_studio",
+      "properties": {
+        "id": "road_ramanthapur_tv_studio",
+        "name": "Doordarshan TV Studio - Polytechnic Road",
+        "highway": "secondary",
+        "lanes": 4,
+        "locality": "Ramanthapur"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.531,
+            17.391
+          ],
+          [
+            78.5345,
+            17.3895
+          ],
+          [
+            78.5372,
+            17.3885
+          ],
+          [
+            78.5395,
+            17.386
+          ],
+          [
+            78.542,
+            17.383
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_ramanthapur_musi_embankment",
+      "properties": {
+        "id": "road_ramanthapur_musi_embankment",
+        "name": "Ramanthapur - Musi Southern River Road",
+        "highway": "tertiary",
+        "lanes": 2,
+        "locality": "Ramanthapur"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.528,
+            17.382
+          ],
+          [
+            78.533,
+            17.383
+          ],
+          [
+            78.5372,
+            17.3845
+          ],
+          [
+            78.542,
+            17.3855
+          ],
+          [
+            78.548,
+            17.387
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_uppal_junction_ring",
+      "properties": {
+        "id": "road_uppal_junction_ring",
+        "name": "Uppal Ring Road & X Roads Interchange",
+        "highway": "trunk",
+        "lanes": 6,
+        "locality": "Uppal"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.552,
+            17.388
+          ],
+          [
+            78.556,
+            17.396
+          ],
+          [
+            78.56,
+            17.402
+          ],
+          [
+            78.564,
+            17.408
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_amberpet_causeway_main",
+      "properties": {
+        "id": "road_amberpet_causeway_main",
+        "name": "Amberpet Causeway - Ali Cafe Road",
+        "highway": "primary",
+        "lanes": 4,
+        "locality": "Amberpet"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.508,
+            17.387
+          ],
+          [
+            78.514,
+            17.3875
+          ],
+          [
+            78.52,
+            17.388
+          ],
+          [
+            78.526,
+            17.3882
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_dilsukhnagar_nh65",
+      "properties": {
+        "id": "road_dilsukhnagar_nh65",
+        "name": "NH65 Malakpet - Dilsukhnagar Highway",
+        "highway": "primary",
+        "lanes": 6,
+        "locality": "Dilsukhnagar"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.498,
+            17.375
+          ],
+          [
+            78.51,
+            17.372
+          ],
+          [
+            78.525,
+            17.369
+          ],
+          [
+            78.538,
+            17.365
+          ],
+          [
+            78.552,
+            17.355
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_lb_nagar_junction",
+      "properties": {
+        "id": "road_lb_nagar_junction",
+        "name": "LB Nagar Central Underpass & Ring Road",
+        "highway": "trunk",
+        "lanes": 8,
+        "locality": "LB Nagar",
+        "is_underpass": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.544,
+            17.348
+          ],
+          [
+            78.55,
+            17.352
+          ],
+          [
+            78.556,
+            17.356
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_nagole_musi_bridge",
+      "properties": {
+        "id": "road_nagole_musi_bridge",
+        "name": "Nagole Bridge & Musi Causeway Link",
+        "highway": "secondary",
+        "lanes": 4,
+        "locality": "Nagole"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.556,
+            17.372
+          ],
+          [
+            78.558,
+            17.378
+          ],
+          [
+            78.56,
+            17.385
+          ],
+          [
+            78.562,
+            17.392
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_tarnaka_flyover_main",
+      "properties": {
+        "id": "road_tarnaka_flyover_main",
+        "name": "Tarnaka Flyover & Osmania University Road",
+        "highway": "primary",
+        "lanes": 6,
+        "locality": "Tarnaka"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.52,
+            17.428
+          ],
+          [
+            78.528,
+            17.425
+          ],
+          [
+            78.536,
+            17.42
+          ],
+          [
+            78.544,
+            17.412
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_habsiguda_arterial",
+      "properties": {
+        "id": "road_habsiguda_arterial",
+        "name": "Habsiguda Main Road (Metro Corridor)",
+        "highway": "primary",
+        "lanes": 6,
+        "locality": "Habsiguda"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.536,
+            17.42
+          ],
+          [
+            78.545,
+            17.411
+          ],
+          [
+            78.552,
+            17.404
+          ],
+          [
+            78.556,
+            17.396
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_secunderabad_paradise",
+      "properties": {
+        "id": "road_secunderabad_paradise",
+        "name": "Paradise Junction - MG Road Corridor",
+        "highway": "primary",
+        "lanes": 6,
+        "locality": "Secunderabad"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.485,
+            17.442
+          ],
+          [
+            78.492,
+            17.44
+          ],
+          [
+            78.5,
+            17.438
+          ],
+          [
+            78.508,
+            17.436
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_secunderabad_station_approach",
+      "properties": {
+        "id": "road_secunderabad_station_approach",
+        "name": "Secunderabad Railway Station Approach Road",
+        "highway": "primary",
+        "lanes": 4,
+        "locality": "Secunderabad",
+        "is_underpass": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.5,
+            17.434
+          ],
+          [
+            78.504,
+            17.435
+          ],
+          [
+            78.508,
+            17.436
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_banjara_hills_rd1",
+      "properties": {
+        "id": "road_banjara_hills_rd1",
+        "name": "Banjara Hills Road No. 1 (City Centre)",
+        "highway": "primary",
+        "lanes": 4,
+        "locality": "Banjara Hills"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.448,
+            17.418
+          ],
+          [
+            78.44,
+            17.419
+          ],
+          [
+            78.432,
+            17.42
+          ],
+          [
+            78.424,
+            17.422
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_jubilee_hills_rd36",
+      "properties": {
+        "id": "road_jubilee_hills_rd36",
+        "name": "Jubilee Hills Road No. 36 Metro Spine",
+        "highway": "primary",
+        "lanes": 6,
+        "locality": "Jubilee Hills"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.422,
+            17.426
+          ],
+          [
+            78.414,
+            17.432
+          ],
+          [
+            78.406,
+            17.438
+          ],
+          [
+            78.398,
+            17.442
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "road_charminar_nayapul",
+      "properties": {
+        "id": "road_charminar_nayapul",
+        "name": "Nayapul Causeway - Charminar Heritage Spine",
+        "highway": "primary",
+        "lanes": 4,
+        "locality": "Charminar"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.473,
+            17.371
+          ],
+          [
+            78.474,
+            17.368
+          ],
+          [
+            78.475,
+            17.365
+          ],
+          [
+            78.4745,
+            17.3616
+          ]
+        ]
+      }
     }
   ]
 }

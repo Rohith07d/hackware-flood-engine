@@ -317,6 +317,102 @@
           ]
         ]
       }
+    },
+    {
+      "type": "Feature",
+      "id": "drain_ramanthapur_cheruvu_channel",
+      "properties": {
+        "id": "drain_ramanthapur_cheruvu_channel",
+        "name": "Pedda Cheruvu Lake Outflow Canal to Musi",
+        "type": "Stormwater Channel",
+        "width_m": 12.0,
+        "risk_tier": "Critical"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.534,
+            17.392
+          ],
+          [
+            78.5365,
+            17.389
+          ],
+          [
+            78.5372,
+            17.3885
+          ],
+          [
+            78.538,
+            17.384
+          ],
+          [
+            78.539,
+            17.38
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "drain_amberpet_nala",
+      "properties": {
+        "id": "drain_amberpet_nala",
+        "name": "Amberpet Feeder Nala",
+        "type": "Primary Drainage Nala",
+        "width_m": 18.0,
+        "risk_tier": "Severe"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.512,
+            17.396
+          ],
+          [
+            78.518,
+            17.392
+          ],
+          [
+            78.524,
+            17.386
+          ],
+          [
+            78.528,
+            17.381
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "drain_nagole_channel",
+      "properties": {
+        "id": "drain_nagole_channel",
+        "name": "Nagole Eastern Musi Inflow Spine",
+        "type": "Catchment Stream",
+        "width_m": 14.0,
+        "risk_tier": "Severe"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.554,
+            17.39
+          ],
+          [
+            78.557,
+            17.384
+          ],
+          [
+            78.56,
+            17.378
+          ]
+        ]
+      }
     }
   ]
 }
