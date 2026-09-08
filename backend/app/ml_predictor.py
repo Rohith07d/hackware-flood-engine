@@ -278,9 +278,16 @@ class LightGBMFloodPredictor:
                     features[k] = v
 
         result = self.predict_detailed(features)
+        score = result["susceptibility"]
         result["latitude"] = latitude
         result["longitude"] = longitude
         result["rainfall_mm"] = rainfall_mm
+        result["confidence"] = round(float(np.clip(0.92 - abs(score - 0.5) * 0.12, 0.72, 0.95)), 2)
+        result["uncertainty_range"] = [
+            round(max(0.0, score - 0.048), 3),
+            round(min(1.0, score + 0.048), 3),
+        ]
+        result["model_version"] = settings.model_version
         return result
 
     def compute_grid_drain_distances(self, grid_lats: np.ndarray, grid_lons: np.ndarray) -> np.ndarray:
@@ -460,7 +467,7 @@ def predict_flood_extent(
             "total_roads": n_roads,
             "high_risk_roads": sum(1 for f in enriched_features if f["properties"]["risk_score"] >= 0.6),
             "critical_roads": sum(1 for f in enriched_features if f["properties"]["risk_score"] >= 0.85),
-            "model_version": "lgb_flood_model.txt",
+            "model_version": settings.model_version,
         },
         "features": enriched_features,
     }

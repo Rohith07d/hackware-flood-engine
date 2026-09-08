@@ -260,3 +260,100 @@ def test_predict_flood_extent_and_continuous_risk_scores():
     assert data["type"] == "FeatureCollection"
     assert "risk_score" in data["features"][0]["properties"]
     assert isinstance(data["features"][0]["properties"]["risk_score"], float)
+
+
+def test_live_weather_endpoint():
+    resp = client.get("/weather/live?latitude=17.4065&longitude=78.4772")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "current_precipitation_mm" in data
+    assert "forecast_24h_mm" in data
+    assert "forecast_48h_mm" in data
+    assert "forecast_72h_mm" in data
+    assert len(data["hourly"]) > 0
+    assert data["hourly"][0]["risk_tier"] in ("LOW", "MODERATE", "HIGH", "CRITICAL")
+
+
+def test_reverse_geocode_endpoint():
+    # Inside Hyderabad coverage
+    resp = client.get("/reverse-geocode?latitude=17.4065&longitude=78.4772")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["is_in_coverage"] is True
+    assert "address" in data
+
+    # Outside coverage (e.g., Delhi)
+    resp_out = client.get("/reverse-geocode?latitude=28.6139&longitude=77.2090")
+    assert resp_out.status_code == 200
+    assert resp_out.json()["is_in_coverage"] is False
+
+
+def test_crowd_reports_endpoints():
+    payload = {
+        "latitude": 17.3750,
+        "longitude": 78.4820,
+        "water_depth": "Knee",
+        "location_name": "Chaderghat Nala Crossing",
+        "description": "Deep standing stormwater overflowing past road curb.",
+    }
+    create_resp = client.post("/crowd-reports", json=payload)
+    assert create_resp.status_code == 200
+    created = create_resp.json()
+    assert created["water_depth"] == "Knee"
+    assert "id" in created
+
+    list_resp = client.get("/crowd-reports?limit=10")
+    assert list_resp.status_code == 200
+    reports = list_resp.json()
+    assert isinstance(reports, list)
+    assert len(reports) >= 1
+
+
+def test_alerts_subscribe_endpoint():
+    payload = {
+        "phone_number": "+919876543210",
+        "channel": "sms",
+        "latitude": 17.4948,
+        "longitude": 78.6810,
+        "location_name": "Ghatkesar Basin",
+    }
+    resp = client.post("/alerts/subscribe", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "active"
+    assert data["phone_number"] == payload["phone_number"]
+    assert "subscription_id" in data
+
+
+def test_evacuation_route_endpoint():
+    resp = client.get("/evacuation-route?latitude=17.4948&longitude=78.6810")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "shelter_name" in data
+    assert "shelter_coordinates" in data
+    assert len(data["route_waypoints"]) >= 2
+    assert data["distance_km"] > 0
+
+
+def test_historical_events_endpoint():
+    resp = client.get("/historical/events")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["event_id"] == "hyd_oct_2020"
+    assert len(data["inundation_zones"]) > 0
+
+
+def test_multilingual_advisories():
+    payload = {
+        "latitude": 17.4065,
+        "longitude": 78.4772,
+        "rainfall_mm": 130.0,
+        "location_name": "Hyderabad Musi River Basin",
+        "radius_km": 5.0,
+        "language": "te",
+    }
+    resp = client.post("/alerts/generate", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["language"] == "te"
+    assert "హెచ్చరిక" in data["advisory_title"] or len(data["advisory_title"]) > 0

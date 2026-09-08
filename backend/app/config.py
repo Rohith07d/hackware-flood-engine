@@ -25,6 +25,17 @@ class Settings:
     supabase_url: str = os.getenv("SUPABASE_URL", "")
     supabase_key: str = os.getenv("SUPABASE_SERVICE_KEY", "")
 
+    # Model and Version Settings
+    model_version: str = os.getenv("MODEL_VERSION", "lgb_flood_model.txt@v1.2")
+
+    # CORS Config
+    cors_origins: str = os.getenv("CORS_ORIGINS", "")
+
+    # Twilio SMS Alerts Config
+    twilio_account_sid: str = os.getenv("TWILIO_ACCOUNT_SID", "")
+    twilio_auth_token: str = os.getenv("TWILIO_AUTH_TOKEN", "")
+    twilio_phone_number: str = os.getenv("TWILIO_PHONE_NUMBER", "")
+
     # Storage Paths
     base_dir: Path = Path(__file__).resolve().parent.parent
     model_dir: Path = base_dir / "models"

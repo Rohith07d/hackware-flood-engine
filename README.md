@@ -475,78 +475,118 @@ Instead, the architecture focuses on:
 -   [x] Emergency recommendations
 -   [x] Alert persistence
 
-## Phase 4 --- Historical Validation
+## Phase 4 --- Historical Validation & Replay
 
--   [ ] Integrate selected historical flood event
--   [ ] Replay historical environmental conditions
--   [ ] Compare predicted vs observed flood extent
--   [ ] Calculate validation metrics
--   [ ] Visualize prediction error
+-   [x] Integrate selected historical flood event (October 2020 Hyderabad Super-Storm)
+-   [x] Replay historical environmental conditions (190mm cloudburst event)
+-   [x] Compare predicted vs observed flood extent
+-   [x] Interactive historical footprint map layer
+-   [x] Spatial risk calibration with local terrain & drainage
 
-## Phase 5 --- Live Flood Intelligence
+## Phase 5 --- Live Flood Intelligence & Forecasting
 
--   [ ] Live rainfall feeds
--   [ ] Live river-gauge feeds
--   [ ] Automated prediction refresh
--   [ ] Real-time risk map
--   [ ] Street-level alerts
--   [ ] SMS / messaging integration
+-   [x] Open-Meteo live rainfall and 72-hour precipitation forecast
+-   [x] Multi-day risk projection curve (24h / 48h / 72h)
+-   [x] Multilingual AI Emergency Advisories via Featherless AI (English, हिन्दी, తెలుగు)
+-   [x] Real-time street waterlogging citizen crowd reports & pins
+-   [x] Emergency SMS alert dispatch & subscription engine (Twilio)
+-   [x] Browser GPS auto-detection & reverse geocoding with coverage boundaries
 
-## Phase 6 --- Scalable Disaster Intelligence
+## Phase 6 --- Emergency Response & Enterprise Cloud
 
--   [ ] Multi-city deployment
--   [ ] Multi-hazard modelling
--   [ ] Citizen flood reports
--   [ ] Satellite-derived flood extent
--   [ ] Evacuation route optimization
--   [ ] Resource allocation for emergency responders
+-   [x] Safe evacuation routing to nearest relief shelters (Osmania, Gandhi, Malakpet)
+-   [x] Supabase Authentication with Row-Level Security (RLS)
+-   [x] User-saved flood monitoring zones
+-   [x] 3-State health polling (`Checking`, `Online`, `Offline`) with offline localStorage caching
+-   [x] 1-Click Guided Demonstration Modes for judges
+-   [x] Automated CI/CD GitHub Actions workflow (Python 3.11 + Node.js 20)
+-   [x] Production blueprints for Render, Railway, Fly.io, and Netlify
 
 ------------------------------------------------------------------------
 
 # 🔐 Configuration
 
-FloodCast uses environment variables for external services and
-credentials.
+FloodCast uses environment variables for external services and credentials.
 
-### Backend
+### Backend (`backend/.env`)
 
-Create:
-
-``` text
-backend/.env
-```
-
-from:
-
-``` text
-backend/.env.example
-```
-
-Configure:
+Template provided in `backend/.env.example`:
 
 ``` env
-FEATHERLESS_API_KEY="your-key"
-SUPABASE_URL="your-url"
-SUPABASE_SERVICE_KEY="your-key"
-```
+PORT=8000
+ENVIRONMENT="production"
+MODEL_PATH="backend/models/flood_lgbm_model.txt"
+MODEL_VERSION="lgb_flood_model.txt@v1.2"
 
-Optional/configurable values include:
-
-``` env
+# Featherless AI LLM
+FEATHERLESS_API_KEY="your-featherless-api-key"
 FEATHERLESS_BASE_URL="https://api.featherless.ai/v1"
 FEATHERLESS_MODEL="meta-llama/Meta-Llama-3.1-8B-Instruct"
-MODEL_PATH="backend/models/flood_lgbm_model.txt"
+
+# Supabase (Optional in local dev, in-memory mock fallback active)
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_SERVICE_KEY="your-supabase-service-role-key"
+
+# Twilio SMS (Optional, simulated fallback active when credentials absent)
+TWILIO_ACCOUNT_SID=""
+TWILIO_AUTH_TOKEN=""
+TWILIO_PHONE_NUMBER=""
+
+# CORS Allowed Origins
+CORS_ORIGINS="https://hackware-flood-engine.netlify.app,http://localhost:3000"
 ```
 
-### Frontend
+### Frontend (`frontend/.env.local`)
 
-Create the frontend environment file from:
+Template provided in `frontend/.env.example`:
 
-``` text
-frontend/.env.example
+``` env
+# FastAPI Backend URL (Points to production backend or localhost:8000)
+NEXT_PUBLIC_API_BASE_URL="http://localhost:8000"
+
+# Supabase Client
+NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
+
+# Mapbox Access Token (Optional: CARTO Dark/Light tiles used automatically if omitted)
+NEXT_PUBLIC_MAPBOX_TOKEN=""
 ```
 
-**Never commit real API keys or service credentials.**
+------------------------------------------------------------------------
+
+# 🚀 Production Deployment
+
+### 1. Backend: Deploying on Render (Recommended)
+This repository includes a `render.yaml` blueprint for one-click Docker deployment.
+1. Connect your GitHub repository to [Render](https://render.com).
+2. Create a new **Web Service** using Docker runtime:
+   - Root Directory: `backend`
+   - Health Check Path: `/health`
+   - Port: `8000`
+3. Add environment variables: `FEATHERLESS_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`.
+
+### 2. Backend: Deploying on Railway or Heroku
+A `backend/Procfile` is included:
+```text
+web: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+Railway will automatically detect Python, install `requirements.txt`, and bind to `$PORT`.
+
+### 3. Backend: Deploying on Fly.io
+A `fly.toml` configuration is included:
+```bash
+fly launch
+fly deploy
+```
+
+### 4. Frontend: Deploying on Netlify
+The Next.js frontend is configured for Netlify:
+1. Connect GitHub repo to Netlify.
+2. Build command: `npm run build` (inside `frontend/`).
+3. Set Environment Variable:
+   - `NEXT_PUBLIC_API_BASE_URL`: `https://your-backend.onrender.com`
+4. Netlify will build and serve the application with live backend connectivity.
+
 
 ------------------------------------------------------------------------
 

@@ -51,10 +51,10 @@ export default function HomePage() {
 
   const sharedProps = {
     searchQuery, setSearchQuery,
-    isAnalyzing,
-    analysisResult,
+    isAnalyzing, setIsAnalyzing,
+    analysisResult, setAnalysisResult,
     horizon, setHorizon,
-    errorMsg,
+    errorMsg, setErrorMsg,
     handleSearch,
     effectiveScore,
     effectiveTier

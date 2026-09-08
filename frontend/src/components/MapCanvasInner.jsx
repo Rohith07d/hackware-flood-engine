@@ -53,28 +53,32 @@ function minDistanceToPolylineMeters(targetLat, targetLng, coordinates) {
 }
 
 /**
- * High-performance, 100% reliable basemap style using direct OpenStreetMap tiles.
- * Always renders crisp streets, labels, rivers, and topography even without a Mapbox token.
+ * High-performance, 100% reliable basemap style using CartoDB Dark/Light tiles with OSM attribution.
+ * Never rate-limits, works without tokens, and renders fast Retina tiles worldwide.
  */
 function getBasemapStyle(isDark) {
   if (MAPBOX_TOKEN) {
     return `https://api.mapbox.com/styles/v1/mapbox/${isDark ? "dark-v11" : "light-v11"}?access_token=${MAPBOX_TOKEN}`;
   }
 
+  const tileUrl = isDark
+    ? "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+    : "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png";
+
   return {
     version: 8,
     sources: {
-      "osm-basemap": {
+      "carto-basemap": {
         type: "raster",
         tiles: [
-          "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-          "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-          "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          tileUrl,
+          tileUrl.replace("a.basemaps", "b.basemaps"),
+          tileUrl.replace("a.basemaps", "c.basemaps"),
         ],
         tileSize: 256,
         maxzoom: 19,
         attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       },
     },
     layers: [
@@ -82,21 +86,20 @@ function getBasemapStyle(isDark) {
         id: "background-layer",
         type: "background",
         paint: {
-          "background-color": isDark ? "#0f172a" : "#f1f5f9",
+          "background-color": isDark ? "#0b0f19" : "#f8fafc",
         },
       },
       {
-        id: "osm-basemap-layer",
+        id: "carto-basemap-layer",
         type: "raster",
-        source: "osm-basemap",
+        source: "carto-basemap",
         minzoom: 0,
         maxzoom: 22,
         paint: isDark
           ? {
-              "raster-opacity": 0.88,
-              "raster-brightness-max": 0.78,
-              "raster-contrast": 0.18,
-              "raster-saturation": -0.25,
+              "raster-opacity": 0.94,
+              "raster-brightness-max": 0.82,
+              "raster-contrast": 0.16,
             }
           : {
               "raster-opacity": 1.0,
@@ -110,12 +113,17 @@ export default function MapCanvasInner({
   variant = "light", // "light" | "dark"
   showMarkers = false,
   showEvacuation = false,
+  showHistorical = false,
   zoom = 14,
   className = "",
   interactive = true,
   horizon = 62,
   center,
   marker,
+  userLocation,
+  crowdReports = [],
+  customEvacuationRoute,
+  onMapClick,
   highRiskCoordinate,
   highRiskCoordinates,
 }) {
@@ -124,6 +132,9 @@ export default function MapCanvasInner({
   const roadsDataRef = useRef(null);
   const popupRef = useRef(null);
   const markerInstanceRef = useRef(null);
+  const userMarkerRef = useRef(null);
+  const crowdMarkersRef = useRef([]);
+  const shelterMarkerRef = useRef(null);
   const poiMarkersRef = useRef([]);
   const resizeObserverRef = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -454,9 +465,10 @@ export default function MapCanvasInner({
           console.warn("[MapCanvasInner] Could not load local roads vector GeoJSON:", err);
         });
 
-      // Optional evacuation route layer
-      if (showEvacuation && evacuationRoute && evacuationRoute.length > 1) {
-        const evacCoords = evacuationRoute.map((p) => [p[1], p[0]]);
+      // Evacuation route layer (either custom or default mock)
+      const activeEvacRoute = (customEvacuationRoute && customEvacuationRoute.route_waypoints) || (showEvacuation ? evacuationRoute : null);
+      if (activeEvacRoute && activeEvacRoute.length > 1) {
+        const evacCoords = activeEvacRoute.map((p) => [p[1], p[0]]);
         if (!map.getSource("evacuation-route")) {
           map.addSource("evacuation-route", {
             type: "geojson",
@@ -475,11 +487,66 @@ export default function MapCanvasInner({
             layout: { "line-join": "round", "line-cap": "round" },
             paint: {
               "line-color": "#06b6d4",
-              "line-width": 4,
+              "line-width": 4.5,
               "line-dasharray": [2, 2],
             },
           });
         }
+      }
+
+      // Historical flood zones layer (Oct 2020)
+      if (!map.getSource("historical-flood-zones")) {
+        const histZonesGeoJSON = {
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              properties: { name: "Musi River Basin (Oct 2020)", depth: "2.8m Peak" },
+              geometry: { type: "Point", coordinates: [78.4800, 17.3700] }
+            },
+            {
+              type: "Feature",
+              properties: { name: "Nadeem Colony Tolichowki (Oct 2020)", depth: "2.3m Peak" },
+              geometry: { type: "Point", coordinates: [78.4100, 17.3950] }
+            },
+            {
+              type: "Feature",
+              properties: { name: "Ghatkesar Retention Basin (Oct 2020)", depth: "1.9m Peak" },
+              geometry: { type: "Point", coordinates: [78.6810, 17.4948] }
+            },
+            {
+              type: "Feature",
+              properties: { name: "Begumpet Nala (Oct 2020)", depth: "1.6m Peak" },
+              geometry: { type: "Point", coordinates: [78.4720, 17.4440] }
+            }
+          ]
+        };
+
+        map.addSource("historical-flood-zones", {
+          type: "geojson",
+          data: histZonesGeoJSON,
+        });
+
+        map.addLayer({
+          id: "historical-flood-zones-layer",
+          type: "circle",
+          source: "historical-flood-zones",
+          layout: { visibility: showHistorical ? "visible" : "none" },
+          paint: {
+            "circle-radius": 28,
+            "circle-color": "#a855f7",
+            "circle-opacity": 0.45,
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#c084fc",
+          }
+        });
+      }
+
+      // Map click handler for interactive coordinate selection
+      if (onMapClick) {
+        map.on("click", (e) => {
+          onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+        });
       }
     });
 
@@ -500,6 +567,10 @@ export default function MapCanvasInner({
       }
       if (popupRef.current) popupRef.current.remove();
       if (markerInstanceRef.current) markerInstanceRef.current.remove();
+      if (userMarkerRef.current) userMarkerRef.current.remove();
+      if (shelterMarkerRef.current) shelterMarkerRef.current.remove();
+      crowdMarkersRef.current.forEach((m) => m.remove());
+      crowdMarkersRef.current = [];
       poiMarkersRef.current.forEach((m) => m.remove());
       poiMarkersRef.current = [];
       if (mapRef.current) {
@@ -508,6 +579,156 @@ export default function MapCanvasInner({
       }
     };
   }, [dark]);
+
+  // Update historical flood layer visibility
+  useEffect(() => {
+    if (!mapRef.current || !mapLoaded) return;
+    const layer = mapRef.current.getLayer("historical-flood-zones-layer");
+    if (layer) {
+      mapRef.current.setLayoutProperty(
+        "historical-flood-zones-layer",
+        "visibility",
+        showHistorical ? "visible" : "none"
+      );
+    }
+  }, [showHistorical, mapLoaded]);
+
+  // Update custom evacuation route
+  useEffect(() => {
+    if (!mapRef.current || !mapLoaded) return;
+    const source = mapRef.current.getSource("evacuation-route");
+    const activeRoute = (customEvacuationRoute && customEvacuationRoute.route_waypoints) || (showEvacuation ? evacuationRoute : null);
+    if (source && activeRoute && activeRoute.length > 1) {
+      const evacCoords = activeRoute.map((p) => [p[1], p[0]]);
+      source.setData({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: evacCoords },
+      });
+    }
+
+    // Add shelter destination pin if custom evacuation route provided
+    if (customEvacuationRoute && customEvacuationRoute.shelter_coordinates) {
+      if (shelterMarkerRef.current) {
+        shelterMarkerRef.current.remove();
+        shelterMarkerRef.current = null;
+      }
+      const [sLat, sLon] = customEvacuationRoute.shelter_coordinates;
+      const el = document.createElement("div");
+      el.innerHTML = `
+        <div style="background:#0284c7;color:#fff;padding:4px 8px;border-radius:12px;font-size:11px;font-weight:700;border:2px solid #ffffff;box-shadow:0 4px 12px rgba(0,0,0,0.5);display:flex;align-items:center;gap:4px;">
+          <span>🛡️ Shelter</span>
+        </div>
+      `;
+      shelterMarkerRef.current = new maplibregl.Marker({ element: el })
+        .setLngLat([sLon, sLat])
+        .setPopup(new maplibregl.Popup({ offset: 12 }).setText(customEvacuationRoute.shelter_name || "Emergency Shelter"))
+        .addTo(mapRef.current);
+    }
+  }, [customEvacuationRoute, showEvacuation, mapLoaded]);
+
+  // Render User Location Pinpoint Marker with real risk score & contributing factors
+  useEffect(() => {
+    if (!mapRef.current || !mapLoaded) return;
+
+    if (userMarkerRef.current) {
+      userMarkerRef.current.remove();
+      userMarkerRef.current = null;
+    }
+
+    if (!userLocation || typeof userLocation.lat !== "number") return;
+
+    const score = typeof userLocation.riskScore === "number" ? userLocation.riskScore : 0.0;
+    const tier = userLocation.riskTier || (score >= 0.75 ? "CRITICAL" : score >= 0.5 ? "HIGH" : score >= 0.25 ? "MODERATE" : "LOW");
+    const color = tier === "CRITICAL" ? "#ef4444" : tier === "HIGH" ? "#f97316" : tier === "MODERATE" ? "#eab308" : "#10b981";
+
+    const el = document.createElement("div");
+    el.className = "user-location-pinpoint";
+    el.style.width = "32px";
+    el.style.height = "32px";
+    el.style.position = "relative";
+    el.style.cursor = "pointer";
+
+    el.innerHTML = `
+      <div style="position:absolute;inset:0;border-radius:50%;background:${color};opacity:0.4;animation:ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+      <div style="position:relative;width:18px;height:18px;top:7px;left:7px;border-radius:50%;background:${color};border:3px solid #ffffff;box-shadow:0 0 12px ${color};"></div>
+    `;
+
+    // Rich popup card with factors & advisory
+    const factors = userLocation.contributingFactors || {};
+    const popupContent = `
+      <div style="font-family:system-ui,sans-serif;padding:10px 12px;font-size:12px;background:#0f172a;color:#f8fafc;border-radius:10px;border:1.5px solid ${color};box-shadow:0 8px 24px rgba(0,0,0,0.65);max-width:260px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center;">
+          <span>📍 ${userLocation.label || 'Your Location'}</span>
+          <span style="background:${color}25;color:${color};font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;border:1px solid ${color}40;">${tier}</span>
+        </div>
+        <div style="font-size:10.5px;color:#94a3b8;margin-bottom:8px;">${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}</div>
+        <div style="background:#1e293b;padding:6px 8px;border-radius:6px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;">
+            <span style="color:#94a3b8;">Susceptibility:</span>
+            <span style="font-weight:800;color:${color};">${(score * 100).toFixed(1)}%</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10px;color:#cbd5e1;border-top:1px solid #334155;padding-top:4px;">
+            <div>Rain: <b>${factors.total_rainfall_mm ?? horizon}mm</b></div>
+            <div>Elev: <b>${factors.elevation ? factors.elevation.toFixed(0) : '--'}m</b></div>
+            <div>Slope: <b>${factors.slope ? factors.slope.toFixed(1) : '--'}°</b></div>
+            <div>Drain: <b>${factors.dist_to_stream ? factors.dist_to_stream.toFixed(0) : '--'}m</b></div>
+          </div>
+        </div>
+        ${userLocation.advisory ? `<div style="font-size:11px;color:#cbd5e1;line-height:1.4;">${userLocation.advisory.slice(0, 120)}...</div>` : ''}
+      </div>
+    `;
+
+    const popup = new maplibregl.Popup({ offset: 16, className: "user-loc-popup" }).setHTML(popupContent);
+
+    userMarkerRef.current = new maplibregl.Marker({ element: el })
+      .setLngLat([userLocation.lng, userLocation.lat])
+      .setPopup(popup)
+      .addTo(mapRef.current);
+  }, [userLocation, mapLoaded, horizon]);
+
+  // Render Crowd-Sourced Waterlogging markers
+  useEffect(() => {
+    if (!mapRef.current || !mapLoaded) return;
+
+    crowdMarkersRef.current.forEach((m) => m.remove());
+    crowdMarkersRef.current = [];
+
+    if (!crowdReports || crowdReports.length === 0) return;
+
+    crowdReports.forEach((report) => {
+      const el = document.createElement("div");
+      el.className = "crowd-report-marker";
+      el.style.width = "20px";
+      el.style.height = "20px";
+      el.style.borderRadius = "50%";
+      el.style.backgroundColor = report.water_depth === "Submerged" ? "#7c3aed" : report.water_depth === "Waist" ? "#dc2626" : report.water_depth === "Knee" ? "#ea580c" : "#3b82f6";
+      el.style.border = "2px solid #ffffff";
+      el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.5)";
+      el.style.display = "flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.fontSize = "10px";
+      el.style.cursor = "pointer";
+      el.innerHTML = "💧";
+
+      const popupHtml = `
+        <div style="font-family:system-ui,sans-serif;padding:7px 9px;background:#0f172a;color:#fff;border-radius:8px;border:1px solid #3b82f6;font-size:11.5px;max-width:210px;">
+          <div style="font-weight:700;color:#60a5fa;margin-bottom:2px;">💧 Waterlogging Pin</div>
+          <div style="font-weight:600;font-size:12px;">${report.location_name || 'Reported Point'}</div>
+          <div style="font-size:11px;color:#f59e0b;margin-top:2px;">Depth: <b>${report.water_depth}</b></div>
+          ${report.description ? `<div style="font-size:10.5px;color:#cbd5e1;margin-top:4px;">"${report.description}"</div>` : ''}
+          <div style="font-size:9.5px;color:#64748b;margin-top:4px;">Community Verified: ${report.verified ? 'Yes' : 'Pending'}</div>
+        </div>
+      `;
+
+      const m = new maplibregl.Marker({ element: el })
+        .setLngLat([report.longitude, report.latitude])
+        .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML(popupHtml))
+        .addTo(mapRef.current);
+
+      crowdMarkersRef.current.push(m);
+    });
+  }, [crowdReports, mapLoaded]);
 
   // Responsive map resizing when container dimensions change (mobile 60vh <-> desktop, orientation change, window resize)
   useEffect(() => {

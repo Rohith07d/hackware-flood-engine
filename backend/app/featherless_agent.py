@@ -29,11 +29,11 @@ class FeatherlessAgent:
     def is_configured(self) -> bool:
         return self.client is not None and bool(settings.featherless_api_key)
 
-    def analyze_area(self, location: str) -> Dict[str, Any]:
+    def analyze_area(self, location: str, language: str = "en") -> Dict[str, Any]:
         """
-        Orchestrate the area analysis using Featherless tool-capable model.
+        Orchestrate the area analysis using Featherless tool-capable model with multilingual support.
         """
-        print(f"[FeatherlessAgent] Starting analysis for {location}")
+        print(f"[FeatherlessAgent] Starting analysis for {location} (language={language})")
         
         # 1. Resolve area
         loc_data = resolve_area(location)
@@ -66,26 +66,53 @@ class FeatherlessAgent:
         risk_level = prediction["risk_level"]
         features_used = prediction["features_used"]
         
-        # 5. Summarize with Featherless (or graceful deterministic fallback)
+        # 5. Multilingual Summarize with Featherless (or graceful deterministic fallback)
         elev = terrain_feats.get("elevation", 0)
         slope = terrain_feats.get("slope", 0)
         precip = rain_feats.get("total_rainfall_mm", 0)
-        markdown_content = (
-            f"### Tactical Flood Advisory: {address}\n\n"
-            f"**Inundation Risk Level**: `{risk_level}` (Spatial Score: {susceptibility:.2f})\n\n"
-            f"- **Topography**: Elevation {elev:.1f} m, Slope {slope:.1f}°.\n"
-            f"- **Hydrology**: Projected Precipitation {precip:.1f} mm.\n\n"
-            f"Automated LightGBM spatial probability model evaluation indicates {risk_level.lower()} "
-            f"vulnerability under current saturation dynamics. Civil defense and local residents should "
-            f"monitor low-lying stormwater channels and transit corridors."
-        )
+        
+        if language == "te":
+            markdown_content = (
+                f"### వ్యూహాత్మక వరద హెచ్చరిక: {address}\n\n"
+                f"**ముంపు ప్రమాద స్థాయి**: `{risk_level}` (స్కోరు: {susceptibility:.2f})\n\n"
+                f"- **భౌగోళిక ఎత్తు**: {elev:.1f} మీటర్లు, వాలు: {slope:.1f}°.\n"
+                f"- **ఊహించిన వర్షపాతం**: {precip:.1f} మి.మీ.\n\n"
+                f"LightGBM మోడల్ విశ్లేషణ ప్రకారం ఈ ప్రాంతంలో ప్రస్తుత నీటి ప్రవాహం దృష్ట్యా {risk_level} స్థాయి ముప్పు ఉంది. "
+                f"లోతట్టు ప్రాంతాలు మరియు మూసీ కాలువల సమీప ప్రజలు జాగ్రత్తగా ఉండాలి."
+            )
+        elif language == "hi":
+            markdown_content = (
+                f"### सामरिक बाढ़ चेतावनी: {address}\n\n"
+                f"**बाढ़ जोखिम स्तर**: `{risk_level}` (स्कोर: {susceptibility:.2f})\n\n"
+                f"- **भूभाग ऊंचाई**: {elev:.1f} मीटर, ढलान: {slope:.1f}°.\n"
+                f"- **अनुमानित वर्षा**: {precip:.1f} मिमी.\n\n"
+                f"LightGBM मॉडल मूल्यांकन के अनुसार मौजूदा जलजमाव को देखते हुए {risk_level} स्तर का जोखिम है। "
+                f"निचले इलाकों और मुख्य जल निकासी चैनलों के पास सतर्कता बरतें।"
+            )
+        else:
+            markdown_content = (
+                f"### Tactical Flood Advisory: {address}\n\n"
+                f"**Inundation Risk Level**: `{risk_level}` (Spatial Score: {susceptibility:.2f})\n\n"
+                f"- **Topography**: Elevation {elev:.1f} m, Slope {slope:.1f}°.\n"
+                f"- **Hydrology**: Projected Precipitation {precip:.1f} mm.\n\n"
+                f"Automated LightGBM spatial probability model evaluation indicates {risk_level.lower()} "
+                f"vulnerability under current saturation dynamics. Civil defense and local residents should "
+                f"monitor low-lying stormwater channels and transit corridors."
+            )
         
         if self.is_configured and self.client:
+            lang_instruction = "Respond entirely in English."
+            if language == "te":
+                lang_instruction = "Respond entirely in Telugu (తెలుగు). Use clear, authentic Telugu terminology."
+            elif language == "hi":
+                lang_instruction = "Respond entirely in Hindi (हिन्दी). Use clear, authoritative Hindi disaster terminology."
+
             system_prompt = (
                 "You are an Emergency Disaster Management AI for the HackWave Flood Engine. "
                 "You are given real data about a location, its terrain and rainfall features, and the output of our LightGBM model. "
                 "Generate a concise, authoritative emergency advisory. "
                 "Include an explanation of the major contributing features. "
+                f"{lang_instruction} "
                 "Format in clean GitHub Markdown."
             )
             user_content = (
@@ -112,7 +139,6 @@ class FeatherlessAgent:
                 print(f"[FeatherlessAgent] AI explanation generation failed: {exc}. Using deterministic summary.")
             
         # 6. Save to Supabase
-        # We assume supabase_service has a method to save.
         try:
             record = {
                 "location": address,
@@ -123,7 +149,7 @@ class FeatherlessAgent:
                 "terrain_features": terrain_feats,
                 "rainfall_features": rain_feats,
                 "ai_explanation": markdown_content,
-                "model_version": "lgb_flood_model.txt",
+                "model_version": settings.model_version,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             supabase_service.save_prediction(record)
@@ -139,25 +165,60 @@ class FeatherlessAgent:
             "features_used": features_used,
             "ai_explanation": markdown_content,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "model_version": "lgb_flood_model.txt"
+            "model_version": settings.model_version,
         }
 
-    def generate_emergency_advisory(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate a tactical emergency advisory from context."""
-        if not self.is_configured or not self.client:
-            # Fallback when Featherless is not configured
-            return {
-                "advisory_title": f"Flood Alert: {context.get('location_name', 'Unknown')}",
-                "advisory_markdown": f"Automated alert. Susceptibility: {context.get('flood_probability')}. Severity: {context.get('severity')}.",
+    def generate_emergency_advisory(self, context: Dict[str, Any], language: str = "en") -> Dict[str, Any]:
+        """Generate a tactical emergency advisory from context with multilingual support."""
+        loc_name = context.get("location_name", "Unknown Area")
+        prob = context.get("flood_probability", 0.5)
+        sev = context.get("severity", "MODERATE")
+
+        # Deterministic multilingual defaults
+        if language == "te":
+            fallback = {
+                "advisory_title": f"వరద ముందస్తు హెచ్చరిక: {loc_name}",
+                "advisory_markdown": f"స్వయంచాలక నివేదిక. ముంపు సంభావ్యత: {(prob * 100):.1f}%. తీవ్రత: {sev}. లోతట్టు నాలా మార్గాలను నివారించండి.",
                 "recommended_actions": [
-                    "Monitor civil defense and municipal radar feeds.",
-                    "Avoid underpasses, riverbanks, and low-lying stormwater drains."
+                    "స్థానిక విపత్తు నిర్వహణ మరియు జీహెచ్‌ఎంసీ సమాచారాన్ని పర్యవేక్షించండి.",
+                    "అండర్‌పాస్‌లు, చెరువులు మరియు మూసీ నది పరీవాహక ప్రాంతాలకు దూరంగా ఉండండి.",
+                    "ముఖ్యమైన వస్తువులు మరియు పత్రాలను పై అంతస్తులలో భద్రపరచుకోండి."
                 ]
             }
+        elif language == "hi":
+            fallback = {
+                "advisory_title": f"बाढ़ सतर्कता चेतावनी: {loc_name}",
+                "advisory_markdown": f"स्वचालित चेतावनी। संभावित बाढ़ जोखिम: {(prob * 100):.1f}%. गंभीरता: {sev}. जलभराव वाले रास्तों से बचें।",
+                "recommended_actions": [
+                    "आपदा प्रबंधन प्राधिकरण और नगरपालिका बुलेटिन पर नजर रखें।",
+                    "अंडरपास, नालों और निचले जलभराव वाले मार्गों से दूर रहें।",
+                    "आपातकालीन किट तैयार रखें और सुरक्षित स्थान पर शरण लें।"
+                ]
+            }
+        else:
+            fallback = {
+                "advisory_title": f"Flood Alert: {loc_name}",
+                "advisory_markdown": f"Automated alert. Susceptibility: {(prob * 100):.1f}%. Severity: {sev}.",
+                "recommended_actions": [
+                    "Monitor civil defense and municipal radar feeds.",
+                    "Avoid underpasses, riverbanks, and low-lying stormwater drains.",
+                    "Prepare essential supplies and be ready to move to higher ground."
+                ]
+            }
+
+        if not self.is_configured or not self.client:
+            return fallback
+
+        lang_instruction = "Respond entirely in English."
+        if language == "te":
+            lang_instruction = "Respond entirely in Telugu (తెలుగు) with natural language and terminology."
+        elif language == "hi":
+            lang_instruction = "Respond entirely in Hindi (हिन्दी) with authoritative emergency phrasing."
 
         system_prompt = (
             "You are an Emergency Disaster Management AI for the HackWave Flood Engine. "
             "Based on the provided context, generate a tactical emergency advisory in JSON format. "
+            f"{lang_instruction} "
             "Output must be valid JSON with keys: 'advisory_title', 'advisory_markdown', 'recommended_actions' (list of strings)."
         )
         
@@ -176,20 +237,10 @@ class FeatherlessAgent:
             )
             result = json.loads(response.choices[0].message.content.strip())
             return {
-                "advisory_title": result.get("advisory_title", "Emergency Flood Advisory"),
-                "advisory_markdown": result.get("advisory_markdown", "Advisory details unavailable."),
-                "recommended_actions": result.get("recommended_actions", [
-                    "Monitor civil defense and municipal radar feeds.",
-                    "Avoid underpasses, riverbanks, and low-lying stormwater drains."
-                ])
+                "advisory_title": result.get("advisory_title", fallback["advisory_title"]),
+                "advisory_markdown": result.get("advisory_markdown", fallback["advisory_markdown"]),
+                "recommended_actions": result.get("recommended_actions", fallback["recommended_actions"])
             }
         except Exception as exc:
             print(f"[FeatherlessAgent] AI advisory generation failed: {exc}")
-            return {
-                "advisory_title": f"Flood Alert: {context.get('location_name', 'Unknown')}",
-                "advisory_markdown": f"Automated alert (AI unreachable). Susceptibility: {context.get('flood_probability')}. Severity: {context.get('severity')}.",
-                "recommended_actions": [
-                    "Monitor civil defense and municipal radar feeds.",
-                    "Avoid underpasses, riverbanks, and low-lying stormwater drains."
-                ]
-            }
+            return fallback

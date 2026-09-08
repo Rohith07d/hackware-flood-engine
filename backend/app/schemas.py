@@ -106,6 +106,7 @@ class AlertGenerationRequest(BaseModel):
     rainfall_mm: float
     location_name: str = Field(default="Monitored Basin")
     radius_km: float = Field(default=5.0, ge=0.5, le=50.0)
+    language: str = Field(default="en", description="Advisory language: 'en', 'hi', or 'te'")
 
 
 class AlertGenerationResponse(BaseModel):
@@ -119,10 +120,12 @@ class AlertGenerationResponse(BaseModel):
     threatened_infrastructure: List[InfrastructureItem]
     flood_probability: float
     generated_at: datetime = Field(default_factory=get_utc_now)
+    language: str = "en"
 
 
 class AnalyzeAreaRequest(BaseModel):
     location: str = Field(..., description="Name of the area to analyze (e.g. 'Gachibowli, Hyderabad')")
+    language: str = Field(default="en", description="Advisory language: 'en', 'hi', or 'te'")
 
 
 class AnalyzeAreaResponse(BaseModel):
@@ -144,3 +147,76 @@ class HazardMapMetadataResponse(BaseModel):
     shape: List[int]
     overlay_url: str
     disclaimer: str
+
+
+class ReverseGeocodeResponse(BaseModel):
+    latitude: float
+    longitude: float
+    address: str
+    display_name: str
+    is_in_coverage: bool
+
+
+class HourlyForecastPoint(BaseModel):
+    time: str
+    precipitation_mm: float
+    probability_risk: float
+    risk_tier: str
+
+
+class WeatherForecastResponse(BaseModel):
+    latitude: float
+    longitude: float
+    current_precipitation_mm: float
+    forecast_24h_mm: float
+    forecast_48h_mm: float
+    forecast_72h_mm: float
+    hourly: List[HourlyForecastPoint]
+    source: str = "Open-Meteo"
+
+
+class CrowdReportCreate(BaseModel):
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
+    water_depth: str = Field(..., description="Ankle, Knee, Waist, or Submerged")
+    location_name: Optional[str] = "Reported Location"
+    description: Optional[str] = ""
+    reporter_id: Optional[str] = None
+
+
+class CrowdReportResponse(BaseModel):
+    id: str
+    latitude: float
+    longitude: float
+    water_depth: str
+    location_name: str
+    description: str
+    created_at: datetime = Field(default_factory=get_utc_now)
+    verified: bool = False
+
+
+class AlertSubscriptionRequest(BaseModel):
+    phone_number: str = Field(..., description="E.164 phone number e.g. +919876543210")
+    channel: str = Field(default="sms", description="'sms' or 'whatsapp'")
+    latitude: float
+    longitude: float
+    location_name: str
+    user_id: Optional[str] = None
+
+
+class AlertSubscriptionResponse(BaseModel):
+    subscription_id: str
+    status: str
+    phone_number: str
+    channel: str
+    location_name: str
+
+
+class EvacuationRouteResponse(BaseModel):
+    origin: List[float]
+    shelter_name: str
+    shelter_type: str
+    shelter_coordinates: List[float]
+    distance_km: float
+    route_waypoints: List[List[float]]
+    safe_zones: List[str]

@@ -6,19 +6,47 @@ from supabase import Client, create_client
 from .config import settings
 
 # In-memory fallback data store for resilient local execution & testing
+# In-memory fallback data store for resilient local execution & testing with Hyderabad infrastructure
 DEFAULT_INFRASTRUCTURE = [
-    {"id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "name": "Metro General Trauma Hospital", "type": "Hospital", "latitude": 13.0827, "longitude": 80.2707, "vulnerability_score": 0.95, "capacity": 650, "status": "Operational"},
-    {"id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12", "name": "Central River Cross-Over Bridge", "type": "Bridge", "latitude": 13.0780, "longitude": 80.2650, "vulnerability_score": 0.85, "capacity": 0, "status": "Operational"},
-    {"id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13", "name": "Coastal Power Grid Substation 4", "type": "Power Substation", "latitude": 13.0910, "longitude": 80.2810, "vulnerability_score": 0.90, "capacity": 45000, "status": "Operational"},
-    {"id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14", "name": "North District High School & Shelter", "type": "Emergency Shelter", "latitude": 13.0715, "longitude": 80.2580, "vulnerability_score": 0.60, "capacity": 1200, "status": "Operational"},
-    {"id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15", "name": "Municipal Water Purification Works", "type": "Water Treatment", "latitude": 13.0950, "longitude": 80.2620, "vulnerability_score": 0.80, "capacity": 80000, "status": "Operational"},
-    {"id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16", "name": "St. Jude Emergency Medical Clinic", "type": "Hospital", "latitude": 13.0650, "longitude": 80.2450, "vulnerability_score": 0.75, "capacity": 120, "status": "Operational"},
-    {"id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17", "name": "South Highway Flyover Bridge", "type": "Bridge", "latitude": 13.0520, "longitude": 80.2380, "vulnerability_score": 0.70, "capacity": 0, "status": "Operational"},
-    {"id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18", "name": "East Harbour Primary School", "type": "School", "latitude": 13.0880, "longitude": 80.2920, "vulnerability_score": 0.65, "capacity": 450, "status": "Operational"},
+    {"id": "hyd-infra-01", "name": "Osmania General Trauma Hospital", "type": "Hospital", "latitude": 17.3785, "longitude": 78.4754, "vulnerability_score": 0.95, "capacity": 1200, "status": "Operational"},
+    {"id": "hyd-infra-02", "name": "Gandhi Super Specialty Hospital", "type": "Hospital", "latitude": 17.4243, "longitude": 78.5034, "vulnerability_score": 0.88, "capacity": 1500, "status": "Operational"},
+    {"id": "hyd-infra-03", "name": "Community Hospital Ghatkesar", "type": "Hospital", "latitude": 17.4938, "longitude": 78.6795, "vulnerability_score": 0.82, "capacity": 250, "status": "Operational"},
+    {"id": "hyd-infra-04", "name": "Musi River Puranapul Bridge", "type": "Bridge", "latitude": 17.3660, "longitude": 78.4630, "vulnerability_score": 0.90, "capacity": 0, "status": "Operational"},
+    {"id": "hyd-infra-05", "name": "Chaderghat Causeway River Bridge", "type": "Bridge", "latitude": 17.3775, "longitude": 78.4900, "vulnerability_score": 0.92, "capacity": 0, "status": "Operational"},
+    {"id": "hyd-infra-06", "name": "Gachibowli High-Tension Substation", "type": "Power Substation", "latitude": 17.4400, "longitude": 78.3500, "vulnerability_score": 0.78, "capacity": 60000, "status": "Operational"},
+    {"id": "hyd-infra-07", "name": "Keesara Electrical Substation", "type": "Power Substation", "latitude": 17.4875, "longitude": 78.6825, "vulnerability_score": 0.85, "capacity": 35000, "status": "Operational"},
+    {"id": "hyd-infra-08", "name": "Govt. High School Relief Shelter (Ghatkesar)", "type": "Emergency Shelter", "latitude": 17.5005, "longitude": 78.6875, "vulnerability_score": 0.45, "capacity": 1800, "status": "Operational"},
+    {"id": "hyd-infra-09", "name": "Begumpet Central Relief Shelter", "type": "Emergency Shelter", "latitude": 17.4440, "longitude": 78.4720, "vulnerability_score": 0.50, "capacity": 2200, "status": "Operational"},
+    {"id": "hyd-infra-10", "name": "Amberpet Water Treatment Works", "type": "Water Treatment", "latitude": 17.3890, "longitude": 78.5150, "vulnerability_score": 0.86, "capacity": 150000, "status": "Operational"},
+    {"id": "hyd-infra-11", "name": "Peerzadiguda Retention Basin Pump 02", "type": "Water Treatment", "latitude": 17.4120, "longitude": 78.5820, "vulnerability_score": 0.70, "capacity": 40000, "status": "Operational"},
 ]
 
 _memory_predictions: List[Dict[str, Any]] = []
 _memory_alerts: List[Dict[str, Any]] = []
+_memory_crowd_reports: List[Dict[str, Any]] = [
+    {
+        "id": "crowd-sample-01",
+        "latitude": 17.3750,
+        "longitude": 78.4820,
+        "water_depth": "Knee",
+        "location_name": "Chaderghat Nala Crossing",
+        "description": "Severe stormwater backflow overflowing onto main road.",
+        "created_at": "2026-09-08T12:30:00Z",
+        "verified": True,
+    },
+    {
+        "id": "crowd-sample-02",
+        "latitude": 17.4920,
+        "longitude": 78.6830,
+        "water_depth": "Ankle",
+        "location_name": "Ghatkesar Station Underpass",
+        "description": "Standing water accumulating rapidly near drain culvert.",
+        "created_at": "2026-09-08T13:00:00Z",
+        "verified": False,
+    }
+]
+_memory_subscriptions: List[Dict[str, Any]] = []
+_memory_saved_locations: List[Dict[str, Any]] = []
 
 
 def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -140,6 +168,98 @@ class SupabaseService:
                 print(f"[Supabase] Fetch alerts error: {exc}")
 
         return list(reversed(_memory_alerts[-limit:]))
+
+    def save_crowd_report(self, report_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Save a crowd-sourced waterlogging report."""
+        import uuid
+        record = dict(report_data)
+        record.setdefault("id", f"crowd-{uuid.uuid4().hex[:8]}")
+        record.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+        record.setdefault("verified", False)
+
+        if self.client:
+            try:
+                res = self.client.table("crowd_reports").insert(record).execute()
+                if res.data:
+                    return res.data[0]
+            except Exception as exc:
+                print(f"[Supabase] Insert crowd report error: {exc}")
+
+        _memory_crowd_reports.append(record)
+        return record
+
+    def get_crowd_reports(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Fetch community waterlogging reports."""
+        if self.client:
+            try:
+                res = self.client.table("crowd_reports").select("*").order("created_at", desc=True).limit(limit).execute()
+                if res.data:
+                    return res.data
+            except Exception as exc:
+                print(f"[Supabase] Fetch crowd reports error: {exc}")
+
+        return list(reversed(_memory_crowd_reports[-limit:]))
+
+    def save_alert_subscription(self, sub_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Save high-hazard zone alert subscription."""
+        import uuid
+        record = dict(sub_data)
+        record.setdefault("subscription_id", f"sub-{uuid.uuid4().hex[:8]}")
+        record.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+        record.setdefault("status", "active")
+
+        if self.client:
+            try:
+                res = self.client.table("alert_subscriptions").insert(record).execute()
+                if res.data:
+                    return res.data[0]
+            except Exception as exc:
+                print(f"[Supabase] Insert subscription error: {exc}")
+
+        _memory_subscriptions.append(record)
+        return record
+
+    def get_alert_subscriptions(self) -> List[Dict[str, Any]]:
+        """Fetch alert subscriptions."""
+        if self.client:
+            try:
+                res = self.client.table("alert_subscriptions").select("*").execute()
+                if res.data:
+                    return res.data
+            except Exception as exc:
+                print(f"[Supabase] Fetch subscriptions error: {exc}")
+
+        return list(_memory_subscriptions)
+
+    def save_user_location(self, loc_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Save a favorite/pinned location for a user."""
+        import uuid
+        record = dict(loc_data)
+        record.setdefault("id", f"loc-{uuid.uuid4().hex[:8]}")
+        record.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+
+        if self.client:
+            try:
+                res = self.client.table("user_saved_locations").insert(record).execute()
+                if res.data:
+                    return res.data[0]
+            except Exception as exc:
+                print(f"[Supabase] Insert user location error: {exc}")
+
+        _memory_saved_locations.append(record)
+        return record
+
+    def get_user_locations(self, user_id: str) -> List[Dict[str, Any]]:
+        """Fetch saved locations for a specific user."""
+        if self.client:
+            try:
+                res = self.client.table("user_saved_locations").select("*").eq("user_id", user_id).execute()
+                if res.data:
+                    return res.data
+            except Exception as exc:
+                print(f"[Supabase] Fetch user locations error: {exc}")
+
+        return [loc for loc in _memory_saved_locations if loc.get("user_id") == user_id]
 
 
 # Global service instance

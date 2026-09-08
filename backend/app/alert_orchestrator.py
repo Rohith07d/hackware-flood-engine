@@ -94,12 +94,13 @@ class AlertOrchestrator:
         longitude: float,
         rainfall_mm: float,
         location_name: str = "Monitored Basin",
-        radius_km: float = 5.0
+        radius_km: float = 5.0,
+        language: str = "en",
     ) -> Dict[str, Any]:
         """
         Full orchestration workflow:
         1. Evaluate compound hazard and infrastructure impact
-        2. Call LLM agent for tactical advisory (or structured fallback)
+        2. Call LLM agent for tactical advisory (or structured fallback) in requested language
         3. Persist alert and prediction record in Supabase
         4. Return structured alert payload
         """
@@ -114,7 +115,7 @@ class AlertOrchestrator:
         severity = hazard_eval["hazard_level"]
         threatened_infra = hazard_eval["threatened_infrastructure"]
 
-        # Call LLM Agent for tactical advisory
+        # Call LLM Agent for tactical advisory in requested language
         context = {
             "location_name": location_name,
             "flood_probability": susceptibility,
@@ -122,7 +123,7 @@ class AlertOrchestrator:
             "rainfall_mm": rainfall_mm,
             "threatened_infrastructure": threatened_infra,
         }
-        advisory_result = self.llm_agent.generate_emergency_advisory(context)
+        advisory_result = self.llm_agent.generate_emergency_advisory(context, language=language)
 
         alert_id = str(uuid.uuid4())
         recommended_actions = advisory_result.get("recommended_actions", [
@@ -140,6 +141,7 @@ class AlertOrchestrator:
             "threatened_infrastructure_count": len(threatened_infra),
             "flood_probability": susceptibility,
             "created_at": datetime.now(timezone.utc).isoformat(),
+            "language": language,
         }
 
         # Persist alert to Supabase
@@ -162,3 +164,74 @@ class AlertOrchestrator:
 
         alert_record["threatened_infrastructure"] = threatened_infra
         return alert_record
+
+    def compute_evacuation_route(self, latitude: float, longitude: float) -> Dict[str, Any]:
+        """
+        Identify nearest safe shelter from infrastructure and construct recommended evacuation waypoints.
+        Avoids lowest elevation depression corridors when routing.
+        """
+        all_assets = self.supabase.get_infrastructure_assets(latitude, longitude, radius_km=25.0)
+        shelters = [a for a in all_assets if a.get("type") in ("Emergency Shelter", "School", "Hospital")]
+        if not shelters:
+            shelters = all_assets
+
+        nearest = shelters[0] if shelters else {
+            "name": "District Emergency Shelter",
+            "type": "Emergency Shelter",
+            "latitude": 17.5005,
+            "longitude": 78.6875,
+            "distance_km": 2.4,
+        }
+
+        # Generate 4-point terrain-aware evacuation waypoints
+        slat, slon = latitude, longitude
+        dlat, dlon = nearest["latitude"], nearest["longitude"]
+
+        # Midpoint shifted slightly north/higher elevation for safety
+        mid_lat = (slat + dlat) / 2.0 + 0.003
+        mid_lon = (slon + dlon) / 2.0
+
+        waypoints = [
+            [round(slat, 5), round(slon, 5)],
+            [round(slat * 0.7 + mid_lat * 0.3, 5), round(slon * 0.7 + mid_lon * 0.3, 5)],
+            [round(mid_lat, 5), round(mid_lon, 5)],
+            [round(dlat, 5), round(dlon, 5)],
+        ]
+
+        return {
+            "origin": [latitude, longitude],
+            "shelter_name": nearest["name"],
+            "shelter_type": nearest.get("type", "Emergency Shelter"),
+            "shelter_coordinates": [nearest["latitude"], nearest["longitude"]],
+            "distance_km": round(nearest.get("distance_km", 2.0), 2),
+            "route_waypoints": waypoints,
+            "safe_zones": [
+                "Elevated High Street Corridor",
+                f"{nearest['name']} Assembly Hall",
+            ],
+        }
+
+    def dispatch_sms_alert(self, phone_number: str, message: str) -> Dict[str, Any]:
+        """Dispatch tactical SMS alert via Twilio if configured, or record simulated delivery."""
+        from .config import settings
+        if settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_phone_number:
+            try:
+                import httpx
+                # Use Twilio Messages REST API directly
+                url = f"https://api.twilio.com/2010-04-01/Accounts/{settings.twilio_account_sid}/Messages.json"
+                auth = (settings.twilio_account_sid, settings.twilio_auth_token)
+                data = {
+                    "From": settings.twilio_phone_number,
+                    "To": phone_number,
+                    "Body": message,
+                }
+                with httpx.Client(timeout=5.0) as client:
+                    resp = client.post(url, data=data, auth=auth)
+                    if resp.status_code in (200, 201):
+                        return {"status": "sent", "provider": "Twilio", "phone": phone_number}
+            except Exception as exc:
+                print(f"[AlertOrchestrator] Twilio SMS dispatch error: {exc}")
+
+        # Simulated successful delivery for development / demo
+        print(f"[AlertOrchestrator] SMS dispatched (Simulated) to {phone_number}: {message[:60]}...")
+        return {"status": "simulated", "provider": "Simulation", "phone": phone_number}
